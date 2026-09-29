@@ -7,31 +7,24 @@ try {
 } catch (e) {}
 
 const algorithm = 'aes-256-cbc';
+
+// Primary encryption secret:
+// 1. DB_ENCRYPTION_KEY (configured in deploy.yml and .env)
+// 2. Default key used when MongoDB records were originally encrypted
+const PRIMARY_SECRET = process.env.DB_ENCRYPTION_KEY || 'your_super_secret_jwt_key_here';
+const primaryKey = crypto.scryptSync(PRIMARY_SECRET, 'salt', 32);
+
+// We use a fixed IV for deterministic encryption so that we can query exactly (e.g. User.findOne({ email: encrypt(email) }))
+// Note: In highly sensitive environments, deterministic encryption can be vulnerable to frequency analysis, 
+// but it is required here for searchable fields without using complex blind indexing.
 const fixedIv = Buffer.alloc(16, 0);
 
-// Default key used when data was originally encrypted in MongoDB
-const DEFAULT_LEGACY_KEY = 'your_super_secret_jwt_key_here';
-const FALLBACK_KEY = 'TalentHubSecureSecretKey2026!@#';
-
-/**
- * Returns candidate secrets in priority order for decryption and multi-key query matching
- */
-function getCandidateSecrets() {
-  const secrets = [
-    process.env.DB_ENCRYPTION_KEY,
-    DEFAULT_LEGACY_KEY,
-    process.env.JWT_SECRET,
-    FALLBACK_KEY,
-  ].filter(Boolean);
-  return Array.from(new Set(secrets));
-}
-
-function getPrimaryKey() {
-  // Prefer DB_ENCRYPTION_KEY or DEFAULT_LEGACY_KEY because existing records in MongoDB
-  // were encrypted with 'your_super_secret_jwt_key_here'
-  const secret = process.env.DB_ENCRYPTION_KEY || DEFAULT_LEGACY_KEY || process.env.JWT_SECRET || FALLBACK_KEY;
-  return crypto.scryptSync(secret, 'salt', 32);
-}
+// Candidate fallback secrets for backward compatibility when decrypting legacy records
+const FALLBACK_SECRETS = [
+  'your_super_secret_jwt_key_here',
+  process.env.JWT_SECRET,
+  'TalentHubSecureSecretKey2026!@#'
+].filter(Boolean);
 
 function encrypt(text) {
   if (text === null || text === undefined || text === '') return text;
@@ -40,8 +33,7 @@ function encrypt(text) {
   if (typeof text === 'string' && (text.startsWith('ENC:') || text.startsWith('enc:'))) return text;
 
   try {
-    const key = getPrimaryKey();
-    const cipher = crypto.createCipheriv(algorithm, key, fixedIv);
+    const cipher = crypto.createCipheriv(algorithm, primaryKey, fixedIv);
     let encrypted = cipher.update(String(text), 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return `enc:${encrypted}`;
@@ -58,90 +50,58 @@ function decrypt(text) {
   if (typeof text === 'string' && !(text.startsWith('ENC:') || text.startsWith('enc:'))) return text;
 
   const encryptedText = String(text).slice(4); // Remove prefix
-  const secrets = getCandidateSecrets();
 
-  for (const s of secrets) {
-    try {
-      const key = crypto.scryptSync(s, 'salt', 32);
-      const decipher = crypto.createDecipheriv(algorithm, key, fixedIv);
-      let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      if (decrypted !== undefined && decrypted !== null) {
-        return decrypted;
+  // 1. Try decrypting with primary key
+  try {
+    const decipher = crypto.createDecipheriv(algorithm, primaryKey, fixedIv);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    // 2. Fallback: try candidate secrets
+    for (const altSecret of FALLBACK_SECRETS) {
+      if (altSecret === PRIMARY_SECRET) continue;
+      try {
+        const altKey = crypto.scryptSync(altSecret, 'salt', 32);
+        const altDecipher = crypto.createDecipheriv(algorithm, altKey, fixedIv);
+        let altDecrypted = altDecipher.update(encryptedText, 'hex', 'utf8');
+        altDecrypted += altDecipher.final('utf8');
+        return altDecrypted;
+      } catch (altError) {
+        // Continue to next candidate secret
       }
-    } catch (error) {
-      // Try next candidate secret
     }
+    console.error('Decryption error:', error);
+    return text; // Fallback to returning the encrypted string if decryption fails
   }
-
-  // Fallback to returning original string if all decryptions fail
-  return text;
 }
 
-/**
- * Returns a list of all potential ciphertext representations (and plaintexts)
- * across all candidate secrets so MongoDB queries reliably match.
- */
+function getCandidateSecrets() {
+  return Array.from(new Set([PRIMARY_SECRET, ...FALLBACK_SECRETS]));
+}
+
 function getCandidateCiphertexts(text) {
   if (text === null || text === undefined || text === '') return [];
   const str = String(text).trim();
   const lowerStr = str.toLowerCase();
-
-  const candidates = new Set([str, lowerStr]);
-  const secrets = getCandidateSecrets();
-
-  for (const s of secrets) {
-    try {
-      const k = crypto.scryptSync(s, 'salt', 32);
-      const cipher = crypto.createCipheriv(algorithm, k, fixedIv);
-      let enc = cipher.update(lowerStr, 'utf8', 'hex');
-      enc += cipher.final('hex');
-      candidates.add(`enc:${enc}`);
-      candidates.add(`ENC:${enc}`);
-    } catch (e) {}
-
-    if (str !== lowerStr) {
-      try {
-        const k = crypto.scryptSync(s, 'salt', 32);
-        const cipher = crypto.createCipheriv(algorithm, k, fixedIv);
-        let enc = cipher.update(str, 'utf8', 'hex');
-        enc += cipher.final('hex');
-        candidates.add(`enc:${enc}`);
-        candidates.add(`ENC:${enc}`);
-      } catch (e) {}
-    }
-  }
-
+  const candidates = new Set([str, lowerStr, encrypt(str), encrypt(lowerStr)]);
   return Array.from(candidates);
 }
 
-function escapeRegex(str) {
-  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Helper to build a MongoDB $or query that matches against either
- * candidate encrypted values or case-insensitive plaintext.
- */
 function buildFieldQuery(fieldName, value) {
   if (value === null || value === undefined || value === '') {
     return { [fieldName]: value };
   }
   const str = String(value).trim();
   const lowerStr = str.toLowerCase();
-  const candidates = getCandidateCiphertexts(str);
-  const escaped = escapeRegex(str);
-  const escapedLower = escapeRegex(lowerStr);
-
-  const orConditions = [
-    { [fieldName]: { $in: candidates } },
-    { [fieldName]: new RegExp(`^${escaped}$`, 'i') },
-  ];
-  if (escaped !== escapedLower) {
-    orConditions.push({ [fieldName]: new RegExp(`^${escapedLower}$`, 'i') });
-  }
-
-  return { $or: orConditions };
+  return {
+    $or: [
+      { [fieldName]: encrypt(str) },
+      { [fieldName]: encrypt(lowerStr) },
+      { [fieldName]: str },
+      { [fieldName]: lowerStr }
+    ]
+  };
 }
 
 function buildEmailQuery(email) {
@@ -154,5 +114,5 @@ module.exports = {
   getCandidateSecrets,
   getCandidateCiphertexts,
   buildFieldQuery,
-  buildEmailQuery,
+  buildEmailQuery
 };
