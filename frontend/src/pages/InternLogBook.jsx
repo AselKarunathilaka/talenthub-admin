@@ -1,4 +1,4 @@
-﻿﻿import React, {
+﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -149,6 +149,14 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
     });
   };
 
+  const fmtDaysAgo = (d) => {
+    if (!d) return null;
+    const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+    if (days <= 0) return "today";
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
+  };
+
   return (
     <div
       style={{
@@ -224,16 +232,42 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           }}
         >
           {restrictedAt && (
-            <p
+            <div
               style={{
-                fontSize: "clamp(10px, 2vw, 12px)",
-                color: "#ef4444",
-                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 6,
                 margin: "0 0 6px",
               }}
             >
-              ðŸ”’ Restricted on {fmtDate(restrictedAt)}
-            </p>
+              <p
+                style={{
+                  fontSize: "clamp(10px, 2vw, 12px)",
+                  color: "#ef4444",
+                  fontWeight: 600,
+                  margin: 0,
+                }}
+              >
+                🔒 Restricted on {fmtDate(restrictedAt)}
+              </p>
+              {fmtDaysAgo(restrictedAt) && (
+                <span
+                  style={{
+                    fontSize: "clamp(10px, 1.8vw, 11px)",
+                    fontWeight: 700,
+                    color: "#b91c1c",
+                    background: "#fee2e2",
+                    border: "1px solid #fca5a5",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {fmtDaysAgo(restrictedAt)}
+                </span>
+              )}
+            </div>
           )}
           {reason && (
             <p

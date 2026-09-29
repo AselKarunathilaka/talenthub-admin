@@ -72,6 +72,14 @@ const fmtDate = (dateStr) => {
   });
 };
 
+const fmtDaysAgo = (dateStr) => {
+  if (!dateStr) return null;
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+};
+
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  API helpers                                                                */
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -254,6 +262,11 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
                   <p className="text-xs text-slate-500 truncate">{intern.traineeId} • {intern.email}</p>
                   <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
                     <FaCalendarAlt /> Restricted since {fmt(intern.logbookRestrictedAt)}
+                    {intern.logbookRestrictedAt && (
+                      <span className="text-rose-600 font-semibold ml-1">
+                        ({fmtDaysAgo(intern.logbookRestrictedAt)})
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -722,9 +735,7 @@ const AdminLogbookRestriction = () => {
                         <td>
                           <div className="logres-table__name">{fmtDate(intern.logbookRestrictedAt)}</div>
                           <div className="logres-table__sub">
-                            {intern.logbookRestrictedAt
-                              ? `${Math.floor((Date.now() - new Date(intern.logbookRestrictedAt).getTime()) / 86400000)} days ago`
-                              : "—"}
+                            {fmtDaysAgo(intern.logbookRestrictedAt) || "—"}
                           </div>
                         </td>
                         <td>
@@ -793,7 +804,14 @@ const AdminLogbookRestriction = () => {
                       </div>
                       <div className="logres-card__meta-row">
                         <FaCalendarAlt className="logres-card__meta-icon" />
-                        <span className="logres-card__meta-text">Restricted since {fmtDate(intern.logbookRestrictedAt)}</span>
+                        <span className="logres-card__meta-text">
+                          Restricted since {fmtDate(intern.logbookRestrictedAt)}
+                          {intern.logbookRestrictedAt && (
+                            <span style={{ color: "#ef4444", fontWeight: 600, marginLeft: 6 }}>
+                              ({fmtDaysAgo(intern.logbookRestrictedAt)})
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </div>
                     {intern.logbookRestrictionReason && (
