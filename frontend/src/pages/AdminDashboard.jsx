@@ -81,7 +81,7 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error("Error in fetchData:", error);
       setError("Failed to load dashboard data. Please try again.");
-      if (error.message.includes("403") || error.message.includes("401")) {
+      if (error.message.includes("401")) {
         localStorage.removeItem("adminInfo");
         navigate("/admin-login");
       }

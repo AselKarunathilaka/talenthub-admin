@@ -65,7 +65,7 @@ const AdminSettings = () => {
   const isSuperAdmin = adminSession?.user?.role === "super_admin";
   const isSuperAdminPlus = adminSession?.user?.role === "super_admin_plus";
   const isPM = adminSession?.user?.role === "PM" || adminSession?.user?.role === "pm";
-  const canManageUsers = isSuperAdmin || isSuperAdminPlus || isPM || adminSession?.user?.permissions?.includes("users.manage");
+  const canManageUsers = isSuperAdmin || isSuperAdminPlus || isPM || adminSession?.user?.permissions?.includes("users.manage") || adminSession?.user?.visiblePages?.includes("Settings");
 
   // State: Security Verification Popup
   const [isVerified, setIsVerified] = useState(adminSession?.user?.requireSecurityCheck === false);
@@ -1041,7 +1041,9 @@ const AdminSettings = () => {
                                     user.role === 'admin' ? 'text-indigo-500 bg-indigo-100' :
                                       user.role === 'supervisor' ? 'text-sky-500 bg-sky-100' :
                                         user.role === 'developer' ? 'text-emerald-500 bg-emerald-100' :
-                                          'text-slate-500 bg-slate-100';
+                                          user.role === 'BA' ? 'text-teal-700 bg-teal-100' :
+                                            user.role === 'QA' ? 'text-orange-700 bg-orange-100' :
+                                              'text-slate-500 bg-slate-100';
 
                                 const authMethod = (user.authProvider === 'google' || user.googleSubject) ? 'Google SSO' : '••••••••';
 

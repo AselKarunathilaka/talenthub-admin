@@ -67,14 +67,13 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : (user.role || "admin");
     user.authProvider = "developer_password";
+    const defaultRolePerms = permissionsForRole(user.role).filter((permission) => permission !== "users.manage");
+    const userPerms = (user.permissions && user.permissions.length > 0)
+      ? user.permissions
+      : defaultRolePerms;
     user.permissions = isDeveloper
       ? permissionsForRole("super_admin")
-      : permissionsForUser(
-        user,
-        user.permissions?.length
-          ? user.permissions
-          : permissionsForRole(user.role).filter((permission) => permission !== "users.manage"),
-      );
+      : permissionsForUser(user, userPerms);
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);
@@ -177,9 +176,13 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
+        BA: "BA",
+        ba: "BA",
+        QA: "QA",
+        qa: "QA",
       };
       const rawRole = (staff.role || "").trim();
-      const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || "supervisor";
+      const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toUpperCase() === "BA" ? "BA" : rawRole.toUpperCase() === "QA" ? "QA" : rawRole.toLowerCase()) || "supervisor";
       user = new User({
         name: payload.name || staff.name,
         email: normalizedEmail,
@@ -209,9 +212,13 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
+        BA: "BA",
+        ba: "BA",
+        QA: "QA",
+        qa: "QA",
       };
       const rawRole = (staff.role || user.role || "").trim();
-      const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || user.role || "supervisor";
+      const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toUpperCase() === "BA" ? "BA" : rawRole.toUpperCase() === "QA" ? "QA" : rawRole.toLowerCase()) || user.role || "supervisor";
       
       // Update role and permissions if role changed or missing permissions
       if (user.role !== newRole || !user.permissions?.length) {

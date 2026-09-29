@@ -2,6 +2,7 @@ const User = require("../models/User");
 const SecuritySetting = require("../models/SecuritySetting");
 const bcrypt = require("bcryptjs");
 const { encrypt } = require("../utils/dbEncryption");
+const { permissionsForRole } = require("../config/adminPermissions");
 
 // ─── SECURITY PASSWORD MANAGEMENT ───
 
@@ -268,11 +269,19 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "User with this email already exists." });
     }
 
+    const hasSettings = Array.isArray(req.body.visiblePages) && req.body.visiblePages.includes("Settings");
+    let resolvedPermissions = req.body.permissions?.length ? [...req.body.permissions] : permissionsForRole(role);
+    if (hasSettings) {
+      if (!resolvedPermissions.includes("settings.manage")) resolvedPermissions.push("settings.manage");
+      if (!resolvedPermissions.includes("users.manage")) resolvedPermissions.push("users.manage");
+    }
+
     const newUser = new User({
       name,
       email,
       ...(password && { password }), // Password hashed automatically by pre-save hook in User model
       role,
+      permissions: resolvedPermissions,
       visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
       authProvider: provider,
@@ -320,8 +329,24 @@ exports.updateUser = async (req, res) => {
     }
 
     if (name) userToUpdate.name = name;
-    if (role) userToUpdate.role = role;
-    if (visiblePages !== undefined) userToUpdate.visiblePages = visiblePages;
+    if (role) {
+      userToUpdate.role = role;
+      if (req.body.permissions && Array.isArray(req.body.permissions)) {
+        userToUpdate.permissions = req.body.permissions;
+      } else if (!userToUpdate.permissions?.length || userToUpdate.role !== role) {
+        userToUpdate.permissions = permissionsForRole(role);
+      }
+    }
+    if (!userToUpdate.permissions || userToUpdate.permissions.length === 0) {
+      userToUpdate.permissions = permissionsForRole(userToUpdate.role || role);
+    }
+    if (visiblePages !== undefined) {
+      userToUpdate.visiblePages = visiblePages;
+      if (Array.isArray(visiblePages) && visiblePages.includes("Settings")) {
+        if (!userToUpdate.permissions.includes("settings.manage")) userToUpdate.permissions.push("settings.manage");
+        if (!userToUpdate.permissions.includes("users.manage")) userToUpdate.permissions.push("users.manage");
+      }
+    }
     if (isActive !== undefined) userToUpdate.isActive = isActive;
     if (requireSecurityCheck !== undefined) userToUpdate.requireSecurityCheck = requireSecurityCheck;
     if (req.body.disableSecurityMessage !== undefined) userToUpdate.disableSecurityMessage = req.body.disableSecurityMessage;

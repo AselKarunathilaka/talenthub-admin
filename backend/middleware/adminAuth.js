@@ -12,6 +12,7 @@ const requireAdmin = async (req, res, next) => {
     }
     req.admin = user;
     req.user.role = user.role;
+    req.user.visiblePages = user.visiblePages || [];
     req.user.permissions = permissionsForUser(user);
     next();
   } catch (error) {
@@ -20,7 +21,15 @@ const requireAdmin = async (req, res, next) => {
 };
 
 const requirePermission = (permission) => (req, res, next) => {
-  if (req.user?.role === "super_admin" || req.user?.role === "super_admin_plus" || req.user?.role === "PM" || req.user?.role === "pm" || req.user?.permissions?.includes(permission)) return next();
+  const hasSettingsAccess = req.admin?.visiblePages?.includes("Settings") || req.user?.visiblePages?.includes("Settings");
+  if (
+    req.user?.role === "super_admin" ||
+    req.user?.role === "super_admin_plus" ||
+    req.user?.role === "PM" ||
+    req.user?.role === "pm" ||
+    req.user?.permissions?.includes(permission) ||
+    ((permission === "settings.manage" || permission === "users.manage") && hasSettingsAccess)
+  ) return next();
   return res.status(403).json({ message: `Permission required: ${permission}`, code: "FORBIDDEN" });
 };
 

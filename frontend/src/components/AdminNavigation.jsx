@@ -90,12 +90,21 @@ const AdminNavigation = ({ children }) => {
     
     if (role === "super_admin" || role === "super_admin_plus" || role === "PM" || role === "pm") return true;
     
-    if (role === "admin" || role === "developer") {
+    // If visiblePages is explicitly configured for this user, respect their allowed pages
+    if (user?.visiblePages && user.visiblePages.length > 0) {
+      return (
+        user.visiblePages.includes(link.label) ||
+        (link.label === "Notifications" && user.visiblePages.includes("Announcements")) ||
+        (link.label === "Announcements" && user.visiblePages.includes("Notifications"))
+      );
+    }
+    
+    // Default fallback when visiblePages is not configured:
+    if (role === "admin" || role === "developer" || role === "BA" || role === "QA" || role === "ba" || role === "qa") {
       if (link.label === "Settings") return false;
       return true;
     }
     
-    if (user?.visiblePages && user.visiblePages.includes(link.label)) return true;
     return false;
   });
   

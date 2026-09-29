@@ -5,7 +5,19 @@ export const getAdminSession = () => {
 
 export const hasAdminPermission = (permission) => {
   const user = getAdminSession()?.user;
-  return user?.role === "super_admin" || user?.role === "super_admin_plus" || user?.role === "PM" || user?.role === "pm" || user?.permissions?.includes(permission);
+  if (!user) return false;
+  const role = user?.role;
+  if (role === "super_admin" || role === "super_admin_plus" || role === "PM" || role === "pm") return true;
+  if (user?.permissions?.includes(permission)) return true;
+  if ((permission === "settings.manage" || permission === "users.manage") && user?.visiblePages?.includes("Settings")) return true;
+  // Fallback for admin, developer, BA, QA roles if permissions array is missing in session
+  if (["admin", "developer", "BA", "QA", "ba", "qa"].includes(role)) {
+    if (permission === "settings.manage" || permission === "users.manage") {
+      return user?.visiblePages?.includes("Settings") || false;
+    }
+    return true;
+  }
+  return false;
 };
 
 export const formatRole = (role) => {

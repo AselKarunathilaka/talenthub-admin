@@ -96,7 +96,7 @@ router.post(
 router.get("/admin/intern/:internId", async (req, res) => {
   try {
     // Allow admin access only
-    if (!req.user || (req.user.role !== "admin" && req.user.role !== "super_admin")) {
+    if (!req.user || (req.user.accountType !== "admin" && !["admin", "super_admin", "super_admin_plus", "PM", "pm", "developer", "supervisor", "BA", "QA", "ba", "qa"].includes(req.user.role))) {
       return res.status(403).json({ error: "Admin access required" });
     }
     const DailyRecord = require("../models/DailyRecord");
