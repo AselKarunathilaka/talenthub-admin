@@ -2,7 +2,7 @@ const { OAuth2Client } = require("google-auth-library");
 const UserRepository = require("../repositories/userRepository");
 const InternRepository = require("../repositories/internRepository"); // Required for intern login
 const GateStaffRepository = require("../repositories/gateStaffRepository");
-const { encrypt, buildEmailQuery, buildFieldQuery } = require("../utils/dbEncryption");
+const { encrypt } = require("../utils/dbEncryption");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
@@ -152,8 +152,8 @@ class AuthService {
 
     const normalizedEmail = payload.email.toLowerCase().trim();
 
-    // 2. Check allowlist — staff collection (case-insensitive & multi-key matching)
-    const staff = await Staff.findOne(buildEmailQuery(normalizedEmail));
+    // 2. Check allowlist — staff collection (case-insensitive)
+    const staff = await Staff.findOne({ email: encrypt(normalizedEmail) });
     if (!staff) {
       throw new Error(
         "Access denied. Your Google account is not registered as an authorized staff member. " +
@@ -162,7 +162,7 @@ class AuthService {
     }
 
     // 3. Find or create the User record
-    let user = await User.findOne(buildEmailQuery(normalizedEmail));
+    let user = await User.findOne({ email: encrypt(normalizedEmail) });
     if (!user) {
       // First-time sign-in: auto-provision the admin User from staff record
       const roleMap = {
@@ -270,7 +270,7 @@ class AuthService {
     if (!intern) {
       // Check special access for inactive interns
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
-      const hasSpecialAccess = await SpecialAccessIntern.findOne(buildEmailQuery(email.toLowerCase()));
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: encrypt(email.toLowerCase()) });
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
         intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
@@ -278,11 +278,6 @@ class AuthService {
     }
 
     if (!intern) {
-      // Check if this account belongs to an Admin/Staff member to provide clear guidance
-      const staffMember = await Staff.findOne(buildEmailQuery(email));
-      if (staffMember) {
-        throw new Error("This email is registered as an Admin / Staff account. Please click 'Login as Admin' below.");
-      }
       throw new Error("This email is not registered as an intern.");
     }
 
@@ -329,26 +324,22 @@ class AuthService {
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
       const hasSpecialAccess = await SpecialAccessIntern.findOne({
         $or: [
-          buildEmailQuery(cleanIdentifier.toLowerCase()),
-          buildFieldQuery("internId", cleanIdentifier),
-        ],
+          { email: encrypt(cleanIdentifier.toLowerCase()) },
+          { internId: encrypt(cleanIdentifier) }
+        ]
       });
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
         intern = await InactiveIntern.findOne({
           $or: [
             { Trainee_Email: new RegExp(`^${cleanIdentifier}$`, "i") },
-            { Trainee_ID: cleanIdentifier },
-          ],
+            { Trainee_ID: cleanIdentifier }
+          ]
         });
       }
     }
 
     if (!intern) {
-      const staffMember = await Staff.findOne(buildEmailQuery(cleanIdentifier));
-      if (staffMember) {
-        return { error: "This email is registered as an Admin / Staff account. Please use Admin Login." };
-      }
       return { error: "Invalid email/ID or password." };
     }
 

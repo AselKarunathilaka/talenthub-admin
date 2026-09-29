@@ -1,26 +1,9 @@
 // src/utils/api.js
 import { handleUnauthorized } from "./sessionUtils";
 
-const getApiBaseUrl = () => {
-  let envUrl = (import.meta.env.VITE_BACKEND_URL || "").trim().replace(/\/+$/, "");
-  if (envUrl) {
-    if (typeof window !== "undefined" && window.location.protocol === "http:" && envUrl.startsWith("https://")) {
-      try {
-        const parsed = new URL(envUrl);
-        if (parsed.hostname === window.location.hostname) {
-          envUrl = `http://${parsed.host}${parsed.pathname}`;
-        }
-      } catch (e) {}
-    }
-    return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
-  }
-  if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-    return "/api";
-  }
-  return "http://localhost:5000/api";
-};
-
-export const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = (
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api"
+).replace(/\/+$/, "");
 
 export const safeParseResponse = async (res) => {
   const contentType = res.headers?.get("content-type") || "";

@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const SecuritySetting = require("../models/SecuritySetting");
 const bcrypt = require("bcryptjs");
-const { encrypt, buildEmailQuery } = require("../utils/dbEncryption");
+const { encrypt } = require("../utils/dbEncryption");
 
 // ─── SECURITY PASSWORD MANAGEMENT ───
 
@@ -263,7 +263,7 @@ exports.createUser = async (req, res) => {
       return res.status(403).json({ message: "Only Super Admins can create Super Admin accounts." });
     }
 
-    const existingUser = await User.findOne(buildEmailQuery(String(email).trim().toLowerCase()));
+    const existingUser = await User.findOne({ email: encrypt(String(email).trim().toLowerCase()) });
     if (existingUser) {
       return res.status(400).json({ message: "User with this email already exists." });
     }
