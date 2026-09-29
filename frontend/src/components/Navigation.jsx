@@ -240,15 +240,15 @@ const Navigation = ({ children, isPreview = false, onLogout }) => {
   };
 
   const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, color: "#0ea5e9" },
-    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, color: "#f59e0b" },
-    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, color: "#10b981" },
-    { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" />, color: "#8b5cf6" },
-    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, color: "#f97316" },
-    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, color: "#ec4899" },
-    { onClick: handleTalentTrailClick, label: "Talent Trail", icon: <ExternalLink className="h-5 w-5" />, isExternal: true },
-    { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-5 w-5" />, isExternal: true },
-    { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <Youtube className="h-5 w-5" />, isExternal: true },
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, color: "#0ea5e9", tourId: "sidebar-dashboard" },
+    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, color: "#f59e0b", tourId: "sidebar-attendance" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, color: "#10b981", tourId: "sidebar-logbook" },
+    { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" />, color: "#8b5cf6", tourId: "sidebar-shortleave" },
+    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, color: "#f97316", tourId: "sidebar-extendedleave" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, color: "#ec4899", tourId: "sidebar-seatreservation" },
+    { onClick: handleTalentTrailClick, label: "Talent Trail", icon: <ExternalLink className="h-5 w-5" />, isExternal: true, tourId: "sidebar-talenttrail"},
+    { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-5 w-5" />, isExternal: true, tourId: "sidebar-guidelines"},
+    { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <Youtube className="h-5 w-5" />, isExternal: true, tourId: "sidebar-serendib"},
   ];
   const isActive = (path) => location.pathname === path;
 
@@ -256,6 +256,7 @@ const Navigation = ({ children, isPreview = false, onLogout }) => {
 
   const customActions = (
     <button
+      data-tour="navbar-notifications"
       onClick={handleAnnouncementsToggle}
       className="relative p-2 text-white bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 rounded-full transition-all duration-300 flex items-center justify-center mr-1 md:mr-2 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_20px_rgba(255,255,255,0.15)]"
       title="Announcements"

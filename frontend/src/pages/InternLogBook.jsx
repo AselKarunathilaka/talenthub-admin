@@ -426,12 +426,16 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
         });
         return;
       }
+      const controller = new AbortController();
+      // Fail open instead of hanging on "Checking status..." forever if the
+      // API is slow/unreachable — the page should still render.
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
         const { API_BASE_URL, API_ENDPOINTS } =
           await import("../api/apiConfig");
         const res = await fetch(
           `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}/status`,
-          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" },
+          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store", signal: controller.signal },
         );
         if (res.ok) {
           const data = await res.json();
@@ -450,13 +454,18 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
             restrictedAt: null,
           });
         }
-      } catch {
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          console.error("Logbook restriction check timed out after 8s — failing open.");
+        }
         setLogbookRestriction({
           checking: false,
           restricted: false,
           reason: null,
           restrictedAt: null,
         });
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
     checkRestriction();
@@ -470,12 +479,14 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
         return;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
         const { API_BASE_URL, API_ENDPOINTS } =
           await import("../api/apiConfig");
         const res = await fetch(
           `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}/check-project-access`,
-          { headers: { Authorization: `Bearer ${authToken}` } },
+          { headers: { Authorization: `Bearer ${authToken}` }, signal: controller.signal },
         );
 
         if (!res.ok) {
@@ -489,8 +500,14 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
           setProjectAccessBlocked(false);
         }
       } catch (err) {
-        console.error("Project access check failed:", err);
+        if (err?.name === "AbortError") {
+          console.error("Project access check timed out after 8s — failing open.");
+        } else {
+          console.error("Project access check failed:", err);
+        }
         setProjectAccessBlocked(false);
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
@@ -505,12 +522,14 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
         return;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
         const { API_BASE_URL, API_ENDPOINTS } =
           await import("../api/apiConfig");
         const res = await fetch(
           `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`,
-          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" },
+          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store", signal: controller.signal },
         );
 
         if (res.ok) {
@@ -556,8 +575,14 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
           setLeaveLimitReached(false);
         }
       } catch (err) {
-        console.error("Extended leave check failed:", err);
+        if (err?.name === "AbortError") {
+          console.error("Extended leave check timed out after 8s — failing open.");
+        } else {
+          console.error("Extended leave check failed:", err);
+        }
         setExtendedLeaveBlocked(false);
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
@@ -1044,6 +1069,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                 </div>
               </div>
               <button
+                data-tour="logbook-view-records"
                 onClick={() => { if (isPreview && onViewRecords) onViewRecords(); else if (!isPreview) navigate("/DailyRecords"); }}
                 className="logbook-view-records-btn"
                 style={{
@@ -1624,6 +1650,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                                 )}
                                 <button
                                   type="button"
+                                  data-tour={`logbook-step-tab-${step.id}`}
                                   onClick={() =>
                                     canGoToStep(step.id) &&
                                     setActiveStep(step.id)
@@ -1710,6 +1737,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                             }}
                           >
                             <div
+                              data-tour="logbook-status"
                               style={{ textAlign: "center", marginBottom: 24 }}
                             >
                               <h2
@@ -1956,6 +1984,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                             }}
                           >
                             <div
+                              data-tour="logbook-techstack"
                               style={{ textAlign: "center", marginBottom: 24 }}
                             >
                               <h2
@@ -2254,6 +2283,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                                     </span>
                                   </label>
                                   <textarea
+                                    data-tour="logbook-tasks"
                                     name="tasks"
                                     value={formData.tasks}
                                     onChange={handleChange}
@@ -2314,6 +2344,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                                     </span>
                                   </label>
                                   <textarea
+                                    data-tour="logbook-challenges"
                                     name="challenges"
                                     value={formData.challenges}
                                     onChange={handleChange}
@@ -2374,6 +2405,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                                     </span>
                                   </label>
                                   <textarea
+                                    data-tour="logbook-plans"
                                     name="plans"
                                     value={formData.plans}
                                     onChange={handleChange}
@@ -2621,6 +2653,7 @@ const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecord
                                 Back
                               </button>
                               <button
+                                data-tour="logbook-submit"
                                 type="submit"
                                 disabled={isSubmitDisabled}
                                 className="logbook-submit-btn"

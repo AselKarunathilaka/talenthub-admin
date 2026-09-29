@@ -904,6 +904,7 @@ const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
               </div>
             </div>
             <div
+              data-tour="attendance-location"
               className={`inline-flex items-center gap-[clamp(4px,1.5vw,8px)] rounded-[clamp(8px,2vw,12px)] border px-[clamp(10px,2.5vw,16px)] py-[clamp(6px,1.5vw,10px)] text-[clamp(11px,2.5vw,14px)] font-bold shadow-sm ${
                 mode === "enroll" || locationValid
                   ? "border-[#50b748]/30 bg-[#50b748]/10 text-[#50b748]"
@@ -943,6 +944,7 @@ const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
             animate={{ opacity: 1, y: 0 }}
           >
             <button
+              data-tour="attendance-meeting"
               onClick={() => switchTab("meeting")}
               className={`relative z-10 flex-1 py-[clamp(10px,2.5vw,12px)] px-[clamp(12px,3vw,16px)] text-[clamp(10px,2vw,12px)] font-bold rounded-xl transition-all duration-300 ${
                 activeTab === "meeting"
@@ -953,6 +955,7 @@ const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
               Meeting Attendance
             </button>
             <button
+              data-tour="attendance-daily"
               onClick={() => switchTab("daily")}
               className={`relative z-10 flex-1 py-[clamp(10px,2.5vw,12px)] px-[clamp(12px,3vw,16px)] text-[clamp(10px,2vw,12px)] font-bold rounded-xl transition-all duration-300 ${
                 activeTab === "daily"
@@ -986,10 +989,10 @@ const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
                 
                 {/* Method Switcher Header */}
                 <div className="flex flex-col sm:flex-row border-b border-gray-100 bg-slate-50/50 p-[clamp(6px,1.5vw,8px)] gap-[clamp(6px,1.5vw,8px)]">
-                  <button onClick={() => switchMethod("face")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "face" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                  <button data-tour="face-checkin" onClick={() => switchMethod("face")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "face" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
                     <Camera className="w-[clamp(16px,4vw,18px)] h-[clamp(16px,4vw,18px)]" /> Face ID
                   </button>
-                  <button onClick={() => switchMethod("qr")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "qr" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                  <button data-tour="qr-scanner" onClick={() => switchMethod("qr")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "qr" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
                     <QrCode className="w-[clamp(16px,4vw,18px)] h-[clamp(16px,4vw,18px)]" /> QR Scanner
                   </button>
                 </div>
@@ -1143,6 +1146,7 @@ const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
                       {mode === "recognize" && !cameraActive && (
                         <div className="pt-2 text-center">
                           <button
+                            data-tour="attendance-enroll"
                             type="button"
                             onClick={() => setMode("enroll")}
                             className="text-xs font-bold text-[#0056a2] hover:underline"

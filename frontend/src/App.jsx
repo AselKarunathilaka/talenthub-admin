@@ -3,6 +3,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { BrowserRouter as Router } from "react-router-dom";
 import { Toaster } from 'react-hot-toast'; 
 import AppRoutes from "./routes/AppRoutes";  
+import { TourProvider } from "./context/TourContext";
 
 const App = () => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID; 
@@ -10,20 +11,22 @@ const App = () => {
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <Router>
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-          containerStyle={{
-            zIndex: 9999999,
-          }}
-        />
-        <AppRoutes />
+        <TourProvider>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+            }}
+            containerStyle={{
+              zIndex: 9999999,
+            }}
+          />
+          <AppRoutes />
+        </TourProvider>
       </Router>
     </GoogleOAuthProvider>
   );

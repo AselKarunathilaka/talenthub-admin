@@ -163,6 +163,12 @@ const internSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    //tracking whether an intern has finished or skipped the onboarding tour
+    hasCompletedTour: {
+      type: Boolean,
+      default: false
+    }
   },
   { timestamps: true },
 );

@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { useLocation } from "react-router-dom";
+import { useTour } from "../context/TourContext";
 
 const Layout = ({
   children,
@@ -21,15 +22,47 @@ const Layout = ({
   });
   const location = useLocation();
 
+  const tour = useTour();
+  const shouldSidebarBeOpenForTour = tour?.isTourActive && tour?.currentStep?.element?.includes('data-tour="sidebar-');
+
   // Sync with localStorage
   useEffect(() => {
     localStorage.setItem("isSidebarCollapsed", JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
-  // Close mobile sidebar on route change
+  // If the Guided Tour explicitly needs the sidebar for the current step,
+  // ensure it is open automatically (this fixes timing issues when navigating between pages).
   useEffect(() => {
+    if (shouldSidebarBeOpenForTour && window.innerWidth < 1024) {
+      setIsMobileOpen(true);
+    }
+  }, [shouldSidebarBeOpenForTour]);
+
+  // Close mobile sidebar on route change, UNLESS the guided tour
+  // is active and specifically trying to highlight a sidebar link on this new route.
+  useEffect(() => {
+    if (shouldSidebarBeOpenForTour) {
+        // The tour is navigating to this page explicitly to show a sidebar link.
+        // DO NOT close the sidebar! It will be frozen open until they click Next.
+        return;
+    }
     setIsMobileOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, shouldSidebarBeOpenForTour]);
+
+  // Allow the guided tour to open/close the mobile sidebar programmatically —
+  // sidebar links (TalentTrail, Guidelines, etc.) live inside this drawer,
+  // which is translated off-screen (not display:none) until opened, so the
+  // tour can't highlight them without this.
+  useEffect(() => {
+    const openHandler = () => setIsMobileOpen(true);
+    const closeHandler = () => setIsMobileOpen(false);
+    window.addEventListener("talenthub-tour-open-sidebar", openHandler);
+    window.addEventListener("talenthub-tour-close-sidebar", closeHandler);
+    return () => {
+      window.removeEventListener("talenthub-tour-open-sidebar", openHandler);
+      window.removeEventListener("talenthub-tour-close-sidebar", closeHandler);
+    };
+  }, []);
 
   // Handle window resize for mobile sidebar
   useEffect(() => {

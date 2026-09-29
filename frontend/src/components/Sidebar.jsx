@@ -120,6 +120,7 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
                   }}
                   className={className}
                   title={link.label}
+                  data-tour={link.tourId}
                 >
                   {content}
                 </button>
@@ -133,6 +134,7 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
                 onClick={onClose}
                 className={className}
                 title={link.label}
+                data-tour={link.tourId}
               >
                 {content}
               </Link>
@@ -178,6 +180,7 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
                   return (
                     <button
                       key={`ext-${index}`}
+                      data-tour={link.tourId}
                       onClick={(e) => {
                         if (link.onClick) link.onClick(e);
                         if (onClose) onClose();
@@ -204,6 +207,7 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
           <div className="w-full">
             <hr className={`border-white/10 mx-2 ${location.pathname.startsWith('/admin') ? 'mb-6' : 'mb-3'}`} />
             <button
+              data-tour="sidebar-signout"
               onClick={() => {
                 if (onClose) onClose();
                 onLogout();

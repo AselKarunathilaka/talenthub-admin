@@ -3,8 +3,10 @@ import { Menu, LogOut, ChevronDown, Camera } from "lucide-react";
 import ProfilePictureModal from "./ProfilePictureModal";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import { formatRole } from "../utils/adminAuth";
+import { useTour } from '../context/TourContext';
 
 const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideSidebar }) => {
+  const { startTour } = useTour();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [picHash, setPicHash] = useState(Date.now());
@@ -165,7 +167,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
           )}
 
           {/* Profile Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div data-tour="navbar-profile" className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 pr-2.5 xs:pr-3 sm:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] min-w-0 max-w-[130px] xs:max-w-[180px] sm:max-w-none sm:min-w-[160px] justify-between pointer-events-auto"
@@ -230,7 +232,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
                   >
                     <Camera className="h-4 w-4 text-[#00b4eb]" />
                     Change Photo
-                  </button>
+                  </button>                
 
                   {/* Sign Out */}
                   <button

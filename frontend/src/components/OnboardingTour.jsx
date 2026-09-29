@@ -34,7 +34,7 @@ const ALL_STEPS = [
     isNew: false,
     icon: <Sparkles className="w-10 h-10" />,
     iconBg: "from-violet-500 to-purple-600",
-    title: "Welcome to TalentHub! 🎉",
+    title: "Welcome to TalentHub!",
     description:
       "This portal is your one-stop for attendance, logbook, leave requests, seat reservation, and announcements. Let us give you a quick tour!",
     color: "#7c3aed",
@@ -121,7 +121,7 @@ const ALL_STEPS = [
     isNew: false,
     icon: <Rocket className="w-10 h-10" />,
     iconBg: "from-green-400 to-emerald-600",
-    title: "You're all set! 🚀",
+    title: "You're all set!",
     description:
       "Your TalentHub profile is ready. Explore every section and make the most of your internship. Good luck and have a great journey!",
     color: "#22c55e",
@@ -363,7 +363,11 @@ const OnboardingTour = ({ internData, internId, isNewIntern }) => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  {isLast ? "Got it! Let's go 🚀" : (
+                  {isLast ? (
+                    <span className="flex items-center justify-center gap-1.5">
+                      Got it! Let's go <Rocket className="w-4 h-4" />
+                    </span>
+                  ) : (
                     <span className="flex items-center justify-center gap-1">
                       Next <ChevronRight className="w-4 h-4" />
                     </span>

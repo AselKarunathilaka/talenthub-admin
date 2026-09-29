@@ -526,6 +526,7 @@ const InternSeatReservation = ({ previewInternId = null, isPreview = false }) =>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[calc(100vh-140px)] min-h-[600px] lg:h-auto">
               <div className="flex flex-wrap sm:flex-nowrap border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
                 <button 
+                  data-tour="seat-map"
                   onClick={() => setActiveTab("map")} 
                   className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-6 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-[10px] sm:text-[13px] md:text-[14px] whitespace-nowrap transition-all duration-100 ${
                     activeTab === "map" 
@@ -537,6 +538,7 @@ const InternSeatReservation = ({ previewInternId = null, isPreview = false }) =>
                 </button>
 
                 <button 
+                  data-tour="seat-my-bookings"
                   onClick={() => setActiveTab("bookings")} 
                   className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-6 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-[10px] sm:text-[13px] md:text-[14px] whitespace-nowrap transition-all duration-100 ${
                     activeTab === "bookings" 
@@ -555,6 +557,7 @@ const InternSeatReservation = ({ previewInternId = null, isPreview = false }) =>
                 </button>
 
                 <button 
+                  data-tour="seat-tomorrow"
                   onClick={() => { handleDateChange(tomorrowStr); setActiveTab("map"); }} 
                   className="flex-none sm:flex-1 w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-6 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-[10px] sm:text-[13px] md:text-[14px] transition-all duration-100 bg-amber-50 text-amber-600 hover:bg-amber-100 ring-1 ring-amber-200/50"
                 >

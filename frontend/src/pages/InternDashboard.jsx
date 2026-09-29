@@ -12,6 +12,7 @@ import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import AnnouncementPopup from "../components/AnnouncementPopup";
 import DailyRecordsHeatmap from "../components/DailyRecordsHeatmap";
 import CommitHeatmap from "../components/CommitHeatmap";
+import { DashboardStickyNote } from '../components/DashboardStickyNote';
 import {
   Users,
   User,
@@ -956,6 +957,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
 
     return (
       <div className="bento-container">
+        
+        {/* 📌 Guided Tour Sticky Note (Only renders if tour is not yet completed/dismissed) */}
+        <DashboardStickyNote />
+
         <InternshipEndNotification
           notification={endDateNotification}
           onDismiss={() => {
@@ -985,7 +990,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           </div>
 
           {/* Support Button */}
-          <div className="absolute top-3 right-3 xs:top-4 xs:right-4 xm:top-4 xm:right-4 sm:top-6 sm:right-6 z-20 scale-[0.75] xs:scale-[0.85] xm:scale-[0.9] sm:scale-100 origin-top-right">
+          <div data-tour="contact-support" className="absolute top-3 right-3 xs:top-4 xs:right-4 xm:top-4 xm:right-4 sm:top-6 sm:right-6 z-20 scale-[0.75] xs:scale-[0.85] xm:scale-[0.9] sm:scale-100 origin-top-right">
             <WhatsAppSupportButton size="sm" className="shadow-lg hover:scale-105 border border-[#25D366]/30" />
           </div>
 
@@ -1053,7 +1058,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           {/* === Row 1: Info Cards === */}
 
           {/* Tile 1 – Personal Information */}
-          <div className="bento-card bento-card--info">
+          <div data-tour="personal-info" className="bento-card bento-card--info">
             <div className="bento-card-header">
               <h2 className="bento-card-title" style={{ fontSize: 15 }}>
                 <div className="bento-card-icon bento-card-icon--indigo" style={{ width: 32, height: 32 }}><User size={16} /></div>
@@ -1081,7 +1086,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           </div>
 
           {/* Tile 1b – Training Period */}
-          <div className="bento-card bento-card--info flex flex-col">
+          <div data-tour="training-period" className="bento-card bento-card--info flex flex-col">
             <div className="bento-card-header">
               <h2 className="bento-card-title" style={{ fontSize: 15 }}>
                 <div className="bento-card-icon bento-card-icon--emerald" style={{ width: 32, height: 32 }}><Calendar size={16} /></div>
@@ -1153,7 +1158,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           </div>
 
           {/* Tile 1c – Project Assignments */}
-          <div className="bento-card bento-card--info flex flex-col">
+          <div data-tour="project-assignments" className="bento-card bento-card--info flex flex-col">
             <div className="bento-card-header">
               <h2 className="bento-card-title" style={{ fontSize: 15 }}>
                 <div className="bento-card-icon bento-card-icon--blue" style={{ width: 32, height: 32 }}><Folder size={16} /></div>
@@ -1185,7 +1190,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           </div>
 
           {/* Tile 1b2 – Attendance Rates (Compact) */}
-          <div className="bento-card bento-card--half flex flex-col" style={{ containerType: "inline-size" }}>
+          <div data-tour="attendance-performance" className="bento-card bento-card--half flex flex-col" style={{ containerType: "inline-size" }}>
             <div className="bento-card-header">
               <h2 className="bento-card-title" style={{ fontSize: 15 }}>
                 <div className="bento-card-icon bento-card-icon--purple" style={{ width: 32, height: 32 }}><Activity size={16} /></div>
@@ -1253,7 +1258,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
 
 
           {/* === Row 3: Recent Activity (wide) === */}
-          <div className="bento-card bento-card--half flex flex-col">
+          <div data-tour="recent-activities" className="bento-card bento-card--half flex flex-col">
             <div className="bento-card-header">
               <h2 className="bento-card-title">
                 <div className="bento-card-icon bento-card-icon--purple"><Activity size={18} /></div>
@@ -1526,6 +1531,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 <div className="w-full max-w-[400px] mx-auto px-2 sm:px-4">
                   <div className="flex bg-white p-1.5 rounded-[12px] sm:rounded-2xl shadow-sm border border-gray-100 w-full relative">
                     <button
+                      data-tour="logbook-heatmap"
                       onClick={() => setHeatmapView("logbook")}
                       className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${heatmapView === "logbook"
                           ? "text-white"
@@ -1536,6 +1542,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       <span className="truncate">Logbook</span>
                     </button>
                     <button
+                      data-tour="github-heatmap"
                       onClick={() => setHeatmapView("commits")}
                       className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${heatmapView === "commits"
                           ? "text-white"
@@ -1604,6 +1611,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 pb-2">
               <div className="grid grid-cols-3 w-full bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
                 <button
+                  data-tour="daily-attendance-history"
                   onClick={() => setActiveTab("daily")}
                   className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "daily"
                       ? "text-white"
@@ -1615,6 +1623,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                   <span className="whitespace-nowrap sm:hidden">Daily</span>
                 </button>
                 <button
+                  data-tour="meeting-attendance-history"
                   onClick={() => setActiveTab("meeting")}
                   className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "meeting"
                       ? "text-white"
@@ -1626,6 +1635,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                   <span className="whitespace-nowrap sm:hidden">Meeting</span>
                 </button>
                 <button
+                  data-tour="team-attendance-history"
                   onClick={() => setActiveTab("team")}
                   className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "team"
                       ? "text-white"

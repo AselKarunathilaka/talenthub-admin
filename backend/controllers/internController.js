@@ -952,6 +952,37 @@ const getProfilePicture = async (req, res) => {
   }
 };
 
+
+// =========================== Guided Tour Completion Status ===========================
+
+// @desc    Update tour completion status
+// @route   PUT /api/interns/tour-status
+// @access  Private (Intern)
+const updateTourStatus = async (req, res) => {
+  try {
+    const { hasCompletedTour } = req.body;
+    
+    const intern = await Intern.findByIdAndUpdate(
+      req.user.id,
+      { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+      { new: true }
+    );
+
+    if (!intern) {
+      return res.status(404).json({ message: 'Intern profile not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      hasCompletedTour: intern.hasCompletedTour,
+      message: 'Tour status updated successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error updating tour status', error: error.message });
+  }
+};
+
+
 // =========================== TOUR / ONBOARDING ===========================
 
 /**
@@ -1140,6 +1171,7 @@ module.exports = {
   addAvailableDay,
   removeAvailableDay,
   getInternByIdEach,
+  updateTourStatus,
   // SLT API Integration endpoints
   syncWithSLTAPI,
   testSLTAPI,

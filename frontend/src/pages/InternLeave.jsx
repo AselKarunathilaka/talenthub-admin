@@ -378,6 +378,7 @@ const InternLeave = ({ requestType = "short_leave", isPreview = false, previewIn
             {/* Tab Switcher */}
             <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
               <button
+                data-tour={isStudyLeave ? "extendedleave-new" : "shortleave-new"}
                 onClick={() => {
                   if (hasRequestForToday() && activeTab === "list") {
                     toast.error(pageCopy.duplicate);
@@ -393,6 +394,7 @@ const InternLeave = ({ requestType = "short_leave", isPreview = false, previewIn
                 <FiPlus size={18} /> New Request
               </button>
               <button
+                data-tour={isStudyLeave ? "extendedleave-requests" : "shortleave-requests"}
                 onClick={() => setActiveTab("list")}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${activeTab === "list"
                     ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50"
