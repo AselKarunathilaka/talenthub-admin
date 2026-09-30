@@ -62,9 +62,12 @@ const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState("security");
   const [activeRoleTab, setActiveRoleTab] = useState("all");
   const adminSession = getAdminSession();
-  const isSuperAdmin = adminSession?.user?.role === "super_admin";
-  const isSuperAdminPlus = adminSession?.user?.role === "super_admin_plus";
-  const isPM = adminSession?.user?.role === "PM" || adminSession?.user?.role === "pm";
+  const userRole = adminSession?.user?.role || "";
+  const normalizedRole = userRole.toLowerCase().replace(/[-\s]/g, "_");
+  const isSuperAdmin = normalizedRole === "super_admin";
+  const isSuperAdminPlus = normalizedRole === "super_admin_plus";
+  const isPM = normalizedRole === "pm";
+  const canDisconnectWhatsApp = isSuperAdmin || isSuperAdminPlus || isPM;
   const canManageUsers = isSuperAdmin || isSuperAdminPlus || isPM || adminSession?.user?.permissions?.includes("users.manage") || adminSession?.user?.visiblePages?.includes("Settings");
 
   // State: Security Verification Popup
@@ -493,6 +496,8 @@ const AdminSettings = () => {
           securityPin: togglePrompt.password,
           action: "whatsapp disconnect",
         });
+        // Delay to allow backend to dispatch WhatsApp alert message & email before client session is destroyed
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         await executeWhatsAppDisconnectActual();
       }
       setTogglePrompt({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" });
@@ -565,15 +570,8 @@ const AdminSettings = () => {
   };
 
   const handleWhatsAppDisconnect = () => {
-    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
-    if (adminInfo?.user?.requireSecurityCheck === false) {
-      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
-      // backend sends the message/email, then execute disconnect.
-      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
-        securityPin: "",
-        action: "whatsapp disconnect",
-      }).catch(() => {});
-      executeWhatsAppDisconnectActual();
+    if (!canDisconnectWhatsApp) {
+      showToast("Only Super Admin, Super Admin Plus, and PM can disconnect WhatsApp.", "error");
       return;
     }
 
@@ -1192,9 +1190,11 @@ const AdminSettings = () => {
                             <p className="text-xs text-slate-500">Account: <strong>{waStatus?.connectedNumber}</strong></p>
                           </div>
                         </div>
-                        <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="ml-auto px-4 py-2.5 xl:py-2 bg-rose-50 text-rose-600 text-sm font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center justify-center gap-2 flex-shrink-0 w-full xl:w-auto">
-                          <Unplug className="w-4 h-4" /> Disconnect
-                        </button>
+                        {canDisconnectWhatsApp && (
+                          <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="ml-auto px-4 py-2.5 xl:py-2 bg-rose-50 text-rose-600 text-sm font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center justify-center gap-2 flex-shrink-0 w-full xl:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Unplug className="w-4 h-4" /> {waDisconnecting ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4">
@@ -1336,9 +1336,11 @@ const AdminSettings = () => {
                       </div>
                       <h3 className="text-xl font-bold text-slate-800 mb-2">WhatsApp Linked</h3>
                       <p className="text-sm text-slate-500 mb-8">Active Account: <strong>{waStatus?.connectedNumber}</strong></p>
-                      <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="px-8 py-3 bg-rose-50 text-rose-600 font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center gap-2">
-                        <Unplug className="w-4 h-4" /> Disconnect Device
-                      </button>
+                      {canDisconnectWhatsApp && (
+                        <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="px-8 py-3 bg-rose-50 text-rose-600 font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                          <Unplug className="w-4 h-4" /> {waDisconnecting ? "Disconnecting..." : "Disconnect Device"}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center">
