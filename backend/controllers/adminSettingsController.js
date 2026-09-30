@@ -248,7 +248,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role, isActive, authProvider, platform } = req.body;
+    const { name, email, password, role, isActive, authProvider, platform, requireSecurityCheck } = req.body;
 
     if (!name || !email || !role) {
       return res.status(400).json({ message: "Name, email, and role are required." });
@@ -287,6 +287,7 @@ exports.createUser = async (req, res) => {
       permissions: resolvedPermissions,
       visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
+      requireSecurityCheck: requireSecurityCheck !== undefined ? Boolean(requireSecurityCheck) : true,
       authProvider: provider,
       createdBy: req.user.id,
     });

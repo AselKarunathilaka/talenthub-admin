@@ -976,7 +976,7 @@ const AdminSettings = () => {
                       <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500" /> Staff & Login Management</h3>
                       <p className="text-xs xl:text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
                     </div>
-                    <button onClick={() => { setEditingItem(null); setUserForm({ name: "", email: "", role: "", platform: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], authProvider: "developer_password" }); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Staff</button>
+                    <button onClick={() => { setEditingItem(null); setUserForm({ name: "", email: "", role: "", platform: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true, authProvider: "developer_password" }); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Staff</button>
                   </div>
 
                   {/* Role Filter Toggles */}
