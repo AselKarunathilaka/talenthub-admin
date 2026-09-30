@@ -590,10 +590,9 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const isSuper = ['super_admin', 'super_admin_plus'].includes(userForm.role);
       const payload = {
         ...userForm,
-        platform: isSuper ? "" : (userForm.platform || "")
+        platform: userForm.platform || ""
       };
       if (editingItem) {
         if (!payload.password) delete payload.password;
@@ -606,7 +605,7 @@ const AdminSettings = () => {
               ...adminSession.user,
               name: payload.name,
               role: payload.role,
-              platform: isSuper ? null : (payload.platform || null),
+              platform: payload.platform || null,
               visiblePages: payload.visiblePages
             }
           };
@@ -1410,12 +1409,10 @@ const AdminSettings = () => {
                       } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'super_admin_plus' || newRole === 'PM' || newRole === 'pm') {
                         newVisiblePages = [];
                       }
-                      const isSuper = newRole === 'super_admin' || newRole === 'super_admin_plus';
                       setUserForm({
                         ...userForm,
                         role: newRole,
-                        visiblePages: newVisiblePages,
-                        platform: isSuper ? "" : userForm.platform
+                        visiblePages: newVisiblePages
                       });
                     }}>
                       <option value="" disabled>Select Role</option>
@@ -1429,30 +1426,24 @@ const AdminSettings = () => {
                       <option value="BA">BA</option>
                       <option value="QA">QA</option>
                     </select></div>
-                    {!['super_admin', 'super_admin_plus'].includes(userForm.role) ? (
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Platform</label>
-                        <select
-                          required
-                          className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm"
-                          value={userForm.platform?.toLowerCase() === 'mobile app' ? 'Mobile app' : (userForm.platform || "")}
-                          onChange={e => setUserForm({ ...userForm, platform: e.target.value })}
-                        >
-                          <option value="" disabled>Select Platform</option>
-                          <option value="TalentHub">TalentHub</option>
-                          <option value="Mobile app">Mobile app</option>
-                          <option value="TalentTrail">TalentTrail</option>
-                          <option value="TalentHub&Trail">TalentHub&Trail</option>
-                        </select>
-                      </div>
-                    ) : (
-                      <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
-                    )}
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Platform</label>
+                      <select
+                        className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm"
+                        value={userForm.platform?.toLowerCase() === 'mobile app' ? 'Mobile app' : (userForm.platform || "")}
+                        onChange={e => setUserForm({ ...userForm, platform: e.target.value })}
+                      >
+                        <option value="" disabled>Select Platform</option>
+                        <option value="TalentHub">TalentHub</option>
+                        <option value="Mobile app">Mobile app</option>
+                        <option value="TalentTrail">TalentTrail</option>
+                        <option value="TalentHub&Trail">TalentHub&Trail</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {!['super_admin', 'super_admin_plus'].includes(userForm.role) && (
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
-                  )}
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
 
                   <div className="flex items-center gap-3 pt-2">
                     <input type="checkbox" id="requireSecurityCheck" checked={userForm.requireSecurityCheck !== false} onChange={e => setUserForm({ ...userForm, requireSecurityCheck: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />

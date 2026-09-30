@@ -283,7 +283,7 @@ exports.createUser = async (req, res) => {
       email,
       ...(password && { password }), // Password hashed automatically by pre-save hook in User model
       role,
-      platform: isSuperRole ? null : (platform || null),
+      platform: platform || null,
       permissions: resolvedPermissions,
       visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
@@ -355,11 +355,7 @@ exports.updateUser = async (req, res) => {
     if (req.body.disableSecurityMessage !== undefined) userToUpdate.disableSecurityMessage = req.body.disableSecurityMessage;
     if (password) userToUpdate.password = password; // Will be hashed by pre-save hook
 
-    const targetRole = role || userToUpdate.role;
-    const isSuperRole = targetRole === "super_admin" || targetRole === "super_admin_plus";
-    if (isSuperRole) {
-      userToUpdate.platform = null;
-    } else if (platform !== undefined) {
+    if (platform !== undefined) {
       userToUpdate.platform = platform || null;
     }
 
