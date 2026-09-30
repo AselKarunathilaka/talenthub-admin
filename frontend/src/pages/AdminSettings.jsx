@@ -139,7 +139,7 @@ const AdminSettings = () => {
   const [editingItem, setEditingItem] = useState(null);
 
   // Forms
-  const [userForm, setUserForm] = useState({ name: "", email: "", role: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true });
+  const [userForm, setUserForm] = useState({ name: "", email: "", role: "", platform: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true });
   const [showUserFormPassword, setShowUserFormPassword] = useState(false);
   const [showUserFormConfirmPassword, setShowUserFormConfirmPassword] = useState(false);
   const [alertForm, setAlertForm] = useState({ name: "", role: "", subRole: "", email: "", phoneNumber: "" });
@@ -590,14 +590,31 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      const isSuper = ['super_admin', 'super_admin_plus'].includes(userForm.role);
+      const payload = {
+        ...userForm,
+        platform: isSuper ? "" : (userForm.platform || "")
+      };
       if (editingItem) {
-        const payload = { ...userForm };
         if (!payload.password) delete payload.password;
         await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${editingItem._id}`, payload);
         showToast("User updated.", "success");
+        if (adminSession?.user?._id === editingItem._id || adminSession?.user?.id === editingItem._id) {
+          const updatedSession = {
+            ...adminSession,
+            user: {
+              ...adminSession.user,
+              name: payload.name,
+              role: payload.role,
+              platform: isSuper ? null : (payload.platform || null),
+              visiblePages: payload.visiblePages
+            }
+          };
+          localStorage.setItem("adminInfo", JSON.stringify(updatedSession));
+        }
       } else {
         if (userForm.password !== userForm.confirmPassword) { setLoading(false); return showToast("Passwords mismatch.", "error"); }
-        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.USERS, userForm);
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.USERS, payload);
         showToast("User created.", "success");
       }
       setUserModalOpen(false); fetchUsers();
@@ -960,7 +977,7 @@ const AdminSettings = () => {
                       <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500" /> Staff & Login Management</h3>
                       <p className="text-xs xl:text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
                     </div>
-                    <button onClick={() => { setEditingItem(null); setUserForm({ name: "", email: "", role: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], authProvider: "developer_password" }); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Staff</button>
+                    <button onClick={() => { setEditingItem(null); setUserForm({ name: "", email: "", role: "", platform: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], authProvider: "developer_password" }); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Staff</button>
                   </div>
 
                   {/* Role Filter Toggles */}
@@ -1123,7 +1140,7 @@ const AdminSettings = () => {
                                     <td className="block xl:table-cell px-0 xl:px-5 py-2 xl:py-3.5 text-center xl:text-center">
                                       <div className="flex justify-end xl:justify-center">
                                         <div className="flex items-center gap-2 xl:gap-1 transition-opacity">
-                                          <button onClick={() => { setEditingItem(user); setUserForm({ name: user.name, email: user.email, role: user.role, isActive: user.isActive, visiblePages: user.visiblePages || [], password: "", confirmPassword: "", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false }); setUserModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors" title="Edit Staff">
+                                          <button onClick={() => { setEditingItem(user); setUserForm({ name: user.name, email: user.email, role: user.role, platform: user.platform || "", isActive: user.isActive, visiblePages: user.visiblePages || [], password: "", confirmPassword: "", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false }); setUserModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors" title="Edit Staff">
                                             <Edit className="w-4 h-4 xl:w-4 xl:h-4" />
                                           </button>
                                           <button onClick={() => deleteUser(user._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors ml-2 xl:ml-0" title="Delete Staff">
@@ -1393,7 +1410,13 @@ const AdminSettings = () => {
                       } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'super_admin_plus' || newRole === 'PM' || newRole === 'pm') {
                         newVisiblePages = [];
                       }
-                      setUserForm({ ...userForm, role: newRole, visiblePages: newVisiblePages });
+                      const isSuper = newRole === 'super_admin' || newRole === 'super_admin_plus';
+                      setUserForm({
+                        ...userForm,
+                        role: newRole,
+                        visiblePages: newVisiblePages,
+                        platform: isSuper ? "" : userForm.platform
+                      });
                     }}>
                       <option value="" disabled>Select Role</option>
                       {/* Super Admin Plus option — only shown to SAP users */}
@@ -1406,8 +1429,30 @@ const AdminSettings = () => {
                       <option value="BA">BA</option>
                       <option value="QA">QA</option>
                     </select></div>
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
+                    {!['super_admin', 'super_admin_plus'].includes(userForm.role) ? (
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Platform</label>
+                        <select
+                          required
+                          className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm"
+                          value={userForm.platform?.toLowerCase() === 'mobile app' ? 'Mobile app' : (userForm.platform || "")}
+                          onChange={e => setUserForm({ ...userForm, platform: e.target.value })}
+                        >
+                          <option value="" disabled>Select Platform</option>
+                          <option value="TalentHub">TalentHub</option>
+                          <option value="Mobile app">Mobile app</option>
+                          <option value="TalentTrail">TalentTrail</option>
+                          <option value="TalentHub&Trail">TalentHub&Trail</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
+                    )}
                   </div>
+
+                  {!['super_admin', 'super_admin_plus'].includes(userForm.role) && (
+                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
+                  )}
 
                   <div className="flex items-center gap-3 pt-2">
                     <input type="checkbox" id="requireSecurityCheck" checked={userForm.requireSecurityCheck !== false} onChange={e => setUserForm({ ...userForm, requireSecurityCheck: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />

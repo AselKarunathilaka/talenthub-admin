@@ -248,7 +248,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role, isActive, authProvider } = req.body;
+    const { name, email, password, role, isActive, authProvider, platform } = req.body;
 
     if (!name || !email || !role) {
       return res.status(400).json({ message: "Name, email, and role are required." });
@@ -276,11 +276,14 @@ exports.createUser = async (req, res) => {
       if (!resolvedPermissions.includes("users.manage")) resolvedPermissions.push("users.manage");
     }
 
+    const isSuperRole = role === "super_admin" || role === "super_admin_plus";
+
     const newUser = new User({
       name,
       email,
       ...(password && { password }), // Password hashed automatically by pre-save hook in User model
       role,
+      platform: isSuperRole ? null : (platform || null),
       permissions: resolvedPermissions,
       visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
@@ -304,7 +307,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, isActive, password, visiblePages, requireSecurityCheck } = req.body;
+    const { name, role, isActive, password, visiblePages, requireSecurityCheck, platform } = req.body;
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -351,6 +354,14 @@ exports.updateUser = async (req, res) => {
     if (requireSecurityCheck !== undefined) userToUpdate.requireSecurityCheck = requireSecurityCheck;
     if (req.body.disableSecurityMessage !== undefined) userToUpdate.disableSecurityMessage = req.body.disableSecurityMessage;
     if (password) userToUpdate.password = password; // Will be hashed by pre-save hook
+
+    const targetRole = role || userToUpdate.role;
+    const isSuperRole = targetRole === "super_admin" || targetRole === "super_admin_plus";
+    if (isSuperRole) {
+      userToUpdate.platform = null;
+    } else if (platform !== undefined) {
+      userToUpdate.platform = platform || null;
+    }
 
     await userToUpdate.save();
 

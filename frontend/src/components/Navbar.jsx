@@ -56,7 +56,31 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
   const roleLabel = formatRole(user?.role || user?.designation) || (isAdmin ? "Admin" : "Intern");
   // Display only the human-friendly Trainee ID (e.g. 3907) — never the internal Mongo _id
   const displayId = !isAdmin ? (user?.Trainee_ID || null) : null;
-  const roleWithId = displayId ? `${roleLabel} - ${displayId}` : roleLabel;
+
+  // Platform display for staff members (not added for Super Admin and Super Admin Plus roles)
+  const isSuperAdminRole = (() => {
+    const raw = (user?.rawRole || user?.role || "").toLowerCase().replace(/[-\s]/g, "_");
+    return raw === "super_admin" || raw === "super_admin_plus";
+  })();
+
+  const userPlatform = (() => {
+    if (isSuperAdminRole) return null;
+    let p = user?.platform;
+    if (!p && isAdmin) {
+      try {
+        const session = JSON.parse(localStorage.getItem("adminInfo") || "null");
+        p = session?.user?.platform;
+      } catch {}
+    }
+    if (!p) return null;
+    const trimmed = String(p).trim();
+    if (trimmed.toLowerCase() === "mobile app") return "Mobile App";
+    return trimmed;
+  })();
+
+  const roleWithId = displayId
+    ? `${roleLabel} - ${displayId}`
+    : (userPlatform ? `${roleLabel} - ${userPlatform}` : roleLabel);
 
   // Build a live picture URL that respects picHash for cache-busting
   const buildLivePicUrl = () => {

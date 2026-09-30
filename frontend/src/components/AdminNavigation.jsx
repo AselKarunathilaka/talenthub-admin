@@ -117,6 +117,8 @@ const AdminNavigation = ({ children }) => {
     name: adminSession?.user?.name || adminSession?.user?.email,
     email: adminSession?.user?.email,
     role: formatRole(adminSession?.user?.role) || 'Admin',
+    rawRole: adminSession?.user?.role || '',
+    platform: adminSession?.user?.platform || null,
     picture: adminSession?.user?.picture || null,
     adminId: adminSession?.user?.id || adminSession?.user?._id || null,
     isAdmin: true,

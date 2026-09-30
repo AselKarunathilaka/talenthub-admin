@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema({
     set: encrypt,
     get: decrypt
   },
+  platform: {
+    type: String,
+    default: null,
+    trim: true,
+  },
   permissions: [{ type: String }],
   visiblePages: [{ type: String }],
   isActive: { type: Boolean, default: true },

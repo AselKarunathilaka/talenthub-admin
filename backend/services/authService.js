@@ -26,7 +26,7 @@ class AuthService {
     );
     return {
       token,
-      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, permissions, requireSecurityCheck: user.requireSecurityCheck, visiblePages: user.visiblePages },
+      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, platform: user.platform || null, permissions, requireSecurityCheck: user.requireSecurityCheck, visiblePages: user.visiblePages },
       message: "Login successful!",
     };
   }

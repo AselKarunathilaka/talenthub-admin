@@ -19,6 +19,7 @@ const publicUser = (user) => ({
   picture: user.picture,
   authProvider: user.authProvider,
   role: user.role || "supervisor",
+  platform: user.platform || null,
   permissions: user.permissions || [],
   isActive: user.isActive !== false,
   invitedAt: user.invitedAt,
@@ -140,6 +141,7 @@ exports.updateUser = async (req, res, next) => {
     }
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
     if (requireSecurityCheck !== undefined) updates.requireSecurityCheck = Boolean(requireSecurityCheck);
+    if (req.body.platform !== undefined) updates.platform = req.body.platform || null;
 
     // Prevent changing own role/permissions/isActive, but allow changing own requireSecurityCheck and name
     if (String(user._id) === String(req.admin._id)) {
