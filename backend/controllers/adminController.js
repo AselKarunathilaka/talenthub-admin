@@ -379,9 +379,17 @@ const getInternDetails = async (req, res) => {
     });
 
     // Fetch TalentTrail sync record for projects
-    const syncRecord = await InternTalentTrailSync.findOne({
-      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
-    }).lean();
+    const syncQuery = [];
+    if (intern.Trainee_Email) {
+      const emailTrimmed = String(intern.Trainee_Email).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      syncQuery.push({ email: { $regex: new RegExp(`^${emailTrimmed}$`, "i") } });
+    }
+    if (intern._id) syncQuery.push({ internRef: intern._id });
+    if (intern.Trainee_ID) syncQuery.push({ internCode: String(intern.Trainee_ID).trim() });
+
+    const syncRecord = syncQuery.length > 0
+      ? await InternTalentTrailSync.findOne({ $or: syncQuery }).lean()
+      : null;
     const projects = syncRecord ? syncRecord.projects || [] : [];
 
     // Fetch university supervisor feedbacks
@@ -1613,9 +1621,17 @@ const fetchInternGitCommitsData = async (internId) => {
   }
   if (!intern) return null;
 
-  const syncRecord = await InternTalentTrailSync.findOne({
-    email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
-  }).lean();
+  const syncQuery = [];
+  if (intern.Trainee_Email) {
+    const emailTrimmed = String(intern.Trainee_Email).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    syncQuery.push({ email: { $regex: new RegExp(`^${emailTrimmed}$`, "i") } });
+  }
+  if (intern._id) syncQuery.push({ internRef: intern._id });
+  if (intern.Trainee_ID) syncQuery.push({ internCode: String(intern.Trainee_ID).trim() });
+
+  const syncRecord = syncQuery.length > 0
+    ? await InternTalentTrailSync.findOne({ $or: syncQuery }).lean()
+    : null;
 
   if (
     !syncRecord ||

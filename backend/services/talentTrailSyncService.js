@@ -83,11 +83,17 @@ async function buildInternProjectMap(token) {
     getTalentTrailData("/projects", token, "projects"),
   ]);
 
-  const projectMap = new Map(projects.map((p) => [p.projectId, p]));
+  const projectMap = new Map((projects || []).map((p) => [p.projectId, p]));
+  const teamMap = new Map((teams || []).map((t) => [t.teamId, t]));
 
   const teamToProjects = new Map();
-  for (const project of projects) {
-    for (const teamId of project.assignedTeamIds || []) {
+  for (const project of projects || []) {
+    const assignedTeamIds = new Set([
+      ...(Array.isArray(project.assignedTeamIds) ? project.assignedTeamIds : []),
+      ...(project.assignedTeamId ? [project.assignedTeamId] : []),
+    ]);
+
+    for (const teamId of assignedTeamIds) {
       if (!teamToProjects.has(teamId)) teamToProjects.set(teamId, []);
       teamToProjects.get(teamId).push(project.projectId);
     }
@@ -97,68 +103,85 @@ async function buildInternProjectMap(token) {
 
   const internProjectMap = new Map();
 
-  for (const member of teamMembers) {
+  const getOrCreateInternProjects = (internId) => {
+    if (!internProjectMap.has(internId)) {
+      internProjectMap.set(internId, new Map());
+    }
+    return internProjectMap.get(internId);
+  };
+
+  const addProjectToIntern = (internId, projectId, team = null) => {
+    if (!internId || !projectId) return;
+    const project = projectMap.get(projectId);
+    if (!project) return;
+
+    const internProjects = getOrCreateInternProjects(internId);
+    if (!internProjects.has(projectId)) {
+      internProjects.set(projectId, {
+        projectId: project.projectId,
+        projectName: (project.projectName || "").trim(),
+        description: project.description || "",
+        status: project.status || "",
+        startDate: project.startDate ? new Date(project.startDate) : null,
+        targetDate: project.targetDate ? new Date(project.targetDate) : null,
+        supervisorName: (project.supervisorName || "").trim(),
+        projectManagerName: (project.projectManagerName || "").trim(),
+        teams: [],
+      });
+    }
+
+    if (team) {
+      const projObj = internProjects.get(projectId);
+      const existingTeam = projObj.teams.find((t) => t.teamId === team.teamId);
+      if (!existingTeam) {
+        projObj.teams.push({
+          teamId: team.teamId,
+          teamName: (team.teamName || "").trim(),
+          teamLeaderId: team.teamLeaderId || null,
+          teamLeaderName: (team.teamLeaderName || "").trim(),
+        });
+      }
+    }
+  };
+
+  for (const member of teamMembers || []) {
     const { internId, teamId } = member;
     if (!internId || !teamId) continue;
 
-    const team = teams.find((t) => t.teamId === teamId);
+    const team = teamMap.get(teamId);
     if (!team) continue;
 
     const projectIds = teamToProjects.get(teamId) || [];
-
-    if (!internProjectMap.has(internId))
-      internProjectMap.set(internId, new Map());
-    const projectsForIntern = internProjectMap.get(internId);
-
     for (const projectId of projectIds) {
-      const project = projectMap.get(projectId);
-      if (!project) continue;
+      addProjectToIntern(internId, projectId, team);
+    }
+  }
 
-      if (!projectsForIntern.has(projectId)) {
-        projectsForIntern.set(projectId, {
-          projectId: project.projectId,
-          projectName: project.projectName,
-          description: project.description,
-          status: project.status,
-          startDate: project.startDate ? new Date(project.startDate) : null,
-          targetDate: project.targetDate ? new Date(project.targetDate) : null,
-          supervisorName: project.supervisorName,
-          projectManagerName: project.projectManagerName,
-          teams: [],
-        });
+  // Handle Team Leaders (ensure team leader has project even if not in team-members)
+  for (const team of teams || []) {
+    if (team.teamLeaderId) {
+      const projectIds = teamToProjects.get(team.teamId) || [];
+      for (const projectId of projectIds) {
+        addProjectToIntern(team.teamLeaderId, projectId, team);
       }
-
-      projectsForIntern.get(projectId).teams.push({
-        teamId: team.teamId,
-        teamName: team.teamName,
-        teamLeaderId: team.teamLeaderId,
-        teamLeaderName: team.teamLeaderName,
-      });
     }
   }
 
   // Handle direct assignment to projects (no team)
-  for (const project of projects) {
-    const directInternIds = project.assignedInternIds || project.internIds || project.interns || project.assignedMembers || [];
+  for (const project of projects || []) {
+    const directInternIds = [
+      ...(Array.isArray(project.assignedInternIds) ? project.assignedInternIds : []),
+      ...(Array.isArray(project.internIds) ? project.internIds : []),
+      ...(Array.isArray(project.interns) ? project.interns : []),
+      ...(Array.isArray(project.assignedMembers) ? project.assignedMembers : []),
+    ];
     for (const internId of directInternIds) {
-      if (!internProjectMap.has(internId)) {
-        internProjectMap.set(internId, new Map());
-      }
-      const projectsForIntern = internProjectMap.get(internId);
-      
-      if (!projectsForIntern.has(project.projectId)) {
-        projectsForIntern.set(project.projectId, {
-          projectId: project.projectId,
-          projectName: project.projectName,
-          description: project.description,
-          status: project.status,
-          startDate: project.startDate ? new Date(project.startDate) : null,
-          targetDate: project.targetDate ? new Date(project.targetDate) : null,
-          supervisorName: project.supervisorName,
-          projectManagerName: project.projectManagerName,
-          teams: [],
-        });
-      }
+      addProjectToIntern(internId, project.projectId);
+    }
+
+    // Handle Project Managers who are interns
+    if (project.projectManagerId) {
+      addProjectToIntern(project.projectManagerId, project.projectId);
     }
   }
 
@@ -339,47 +362,68 @@ async function syncTalentTrailData(options = {}) {
     `[TalentTrailSync] Fetched ${interns.length} interns from TalentTrail`,
   );
 
+  // Pre-load local interns for fast O(1) in-memory resolution
+  const localInterns = await Intern.find({}).select("_id Trainee_ID Trainee_Email").lean();
+  const localInternByEmail = new Map();
+  const localInternById = new Map();
+  for (const loc of localInterns) {
+    if (loc.Trainee_Email) localInternByEmail.set(loc.Trainee_Email.trim().toLowerCase(), loc._id);
+    if (loc.Trainee_ID) localInternById.set(String(loc.Trainee_ID).trim().toLowerCase(), loc._id);
+  }
+
   let updated = 0;
   let errors = 0;
 
+  const bulkOps = [];
   for (const intern of interns) {
-    try {
-      const projects = internProjectMap.get(intern.internId) || [];
-      const hasProjectAssignment = projects.some(
-        (p) => Array.isArray(p.teams) && p.teams.length > 0,
-      );
-      const internRef = await resolveLocalInternRef(intern);
+    const internId = intern.internId || intern.id;
+    const rawEmail = intern.email ? String(intern.email).trim() : "";
+    const rawCode = intern.internCode ? String(intern.internCode).trim() : null;
+    const rawName = intern.name ? String(intern.name).trim() : "";
 
-      await InternTalentTrailSync.findOneAndUpdate(
-        { talentTrailInternId: intern.internId },
-        {
+    const projects = internProjectMap.get(internId) || [];
+    const hasProjectAssignment = projects.length > 0;
+
+    let internRef = null;
+    if (rawCode && localInternById.has(rawCode.toLowerCase())) {
+      internRef = localInternById.get(rawCode.toLowerCase());
+    } else if (rawEmail && localInternByEmail.has(rawEmail.toLowerCase())) {
+      internRef = localInternByEmail.get(rawEmail.toLowerCase());
+    }
+
+    bulkOps.push({
+      updateOne: {
+        filter: { talentTrailInternId: internId },
+        update: {
           $set: {
             internRef,
-            talentTrailInternId: intern.internId,
-            internCode: intern.internCode,
-            name: intern.name,
-            email: intern.email,
+            talentTrailInternId: internId,
+            internCode: rawCode,
+            name: rawName,
+            email: rawEmail,
             projects,
             hasActiveProject: hasProjectAssignment,
             lastSyncedAt: new Date(),
             syncError: null,
           },
         },
-        { upsert: true, new: true },
-      );
+        upsert: true,
+      },
+    });
+  }
 
-      updated++;
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < bulkOps.length; i += BATCH_SIZE) {
+    const batch = bulkOps.slice(i, i + BATCH_SIZE);
+    try {
+      const res = await InternTalentTrailSync.bulkWrite(batch, { ordered: false });
+      updated += (res.upsertedCount || 0) + (res.modifiedCount || 0) + (res.matchedCount || 0);
     } catch (err) {
+      if (err.result) {
+        updated += (err.result.nUpserted || 0) + (err.result.nModified || 0) + (err.result.nMatched || 0);
+      }
       errors++;
-      console.error(
-        `[TalentTrailSync] Error syncing intern ${intern.internId}:`,
-        err.message,
-      );
-      await InternTalentTrailSync.findOneAndUpdate(
-        { talentTrailInternId: intern.internId },
-        { $set: { syncError: err.message, lastSyncedAt: new Date() } },
-        { upsert: true },
-      ).catch(() => {});
+      console.warn("[TalentTrailSync] Bulk write note:", err.message);
     }
   }
 

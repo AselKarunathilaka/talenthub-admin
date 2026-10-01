@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const { requireAdmin, requirePermission, enforceRoutePermission } = require("../middleware/adminAuth");
@@ -377,7 +377,14 @@ router.get("/talenttrail/projects", async (req, res) => {
     const internCode = req.query.internCode;
 
     if (internCode) {
-      const sync = await InternTalentTrailSync.findOne({ internCode }).lean();
+      const trimmed = String(internCode).trim();
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const sync = await InternTalentTrailSync.findOne({
+        $or: [
+          { internCode: trimmed },
+          { email: { $regex: new RegExp(`^${escaped}$`, "i") } },
+        ],
+      }).lean();
       return res.json(sync && sync.projects ? sync.projects : []);
     }
 

@@ -802,11 +802,19 @@ const checkInternProjects = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    // Look up the locally-synced TalentTrail record by email
+    // Look up the locally-synced TalentTrail record
     const InternTalentTrailSync = require("../models/InternTalentTrailSync");
-    const syncRecord = await InternTalentTrailSync.findOne({
-      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
-    }).select("projects lastSyncedAt");
+    const syncQuery = [];
+    if (intern.Trainee_Email) {
+      const emailTrimmed = String(intern.Trainee_Email).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      syncQuery.push({ email: { $regex: new RegExp(`^${emailTrimmed}$`, "i") } });
+    }
+    if (intern._id) syncQuery.push({ internRef: intern._id });
+    if (intern.Trainee_ID) syncQuery.push({ internCode: String(intern.Trainee_ID).trim() });
+
+    const syncRecord = syncQuery.length > 0
+      ? await InternTalentTrailSync.findOne({ $or: syncQuery }).select("projects lastSyncedAt")
+      : null;
 
     if (!syncRecord) {
       // No TalentTrail record yet — intern hasn't been synced

@@ -69,9 +69,14 @@ const requireActiveProject = async (req, res, next) => {
     // Look up ALL TalentTrail sync records for this email.
     // Duplicates can exist when the same intern appears under multiple
     // talentTrailInternId values — we must check across all of them.
-    const syncRecords = await InternTalentTrailSync.find({
-      email: { $regex: new RegExp(`^${email}$`, "i") },
-    }).select("projects lastSyncedAt");
+    const trimmedEmail = (email || "").trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const syncQuery = [];
+    if (trimmedEmail) syncQuery.push({ email: { $regex: new RegExp(`^${trimmedEmail}$`, "i") } });
+    if (userId) syncQuery.push({ internRef: userId });
+
+    const syncRecords = syncQuery.length > 0
+      ? await InternTalentTrailSync.find({ $or: syncQuery }).select("projects lastSyncedAt")
+      : [];
 
     if (!syncRecords || syncRecords.length === 0) {
       return res.status(403).json({

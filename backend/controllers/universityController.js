@@ -1232,7 +1232,11 @@ const getUniversityStudentDetails = async (req, res) => {
         .sort({ createdAt: -1 })
         .lean(),
       InternTalentTrailSync.findOne({
-        email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
+        $or: [
+          ...(intern.Trainee_Email ? [{ email: { $regex: new RegExp(`^${String(intern.Trainee_Email).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } }] : []),
+          { internRef: intern._id },
+          ...(intern.Trainee_ID ? [{ internCode: String(intern.Trainee_ID).trim() }] : []),
+        ],
       }).lean().catch(() => null),
       fetchInternGitCommitsData(intern._id).catch(() => null),
     ]);
