@@ -5,6 +5,22 @@ if (!_bufferShim.SlowBuffer) _bufferShim.SlowBuffer = Buffer;
 if (!Buffer.prototype.equal && Buffer.prototype.equals) Buffer.prototype.equal = Buffer.prototype.equals;
 
 const fs = require('fs');
+require("dotenv").config();
+const nodemailer = require("nodemailer");
+
+// When running on a test server, disable all outgoing emails cleanly
+if (process.env.DISABLE_EMAILS === "true") {
+  console.log("🚫 [Email] DISABLE_EMAILS=true: All outgoing emails are mocked on this server.");
+  nodemailer.createTransport = () => ({
+    sendMail: async (opts) => {
+      const recipient = opts.to || opts.recipients || "recipient";
+      console.log(`📨 [MOCK EMAIL] Suppressed email to: ${recipient} | Subject: "${opts.subject}"`);
+      return { messageId: `<mock-${Date.now()}@test-server>`, response: "250 Mock email OK" };
+    },
+    verify: async () => true,
+  });
+}
+
 const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");
