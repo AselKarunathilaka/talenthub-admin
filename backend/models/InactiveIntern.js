@@ -64,14 +64,6 @@ const inactiveInternSchema = new mongoose.Schema(
         ref: "Announcement",
       },
     ],
-    hasCompletedTour: {
-      type: Boolean,
-      default: false,
-    },
-    tourSeenVersion: {
-      type: String,
-      default: null,
-    },
 
     // ✅ Archival metadata — why/when this intern was archived
     archivedAt: { type: Date, default: Date.now },

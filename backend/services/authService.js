@@ -305,7 +305,6 @@ class AuthService {
     return {
       token,
       internId: intern._id,
-      hasCompletedTour: intern.hasCompletedTour === true,
       talentHubRestricted: access.restricted,
       talentHubRestrictionReason: access.reason,
       talentHubOverride: access.isOverride,
@@ -380,7 +379,6 @@ class AuthService {
     return {
       token,
       internId: intern._id,
-      hasCompletedTour: intern.hasCompletedTour === true,
       talentHubRestricted: access.restricted,
       talentHubRestrictionReason: access.reason,
       talentHubOverride: access.isOverride,
