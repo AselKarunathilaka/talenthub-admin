@@ -969,12 +969,71 @@ const getProfilePicture = async (req, res) => {
 const updateTourStatus = async (req, res) => {
   try {
     const { hasCompletedTour } = req.body;
-    
-    const intern = await Intern.findByIdAndUpdate(
-      req.user.id,
-      { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
-      { new: true }
-    );
+    const targetId = req.user?.id || req.body?.internId;
+
+    if (!targetId && !req.user?.email) {
+      return res.status(400).json({ message: 'User identification required' });
+    }
+
+    const mongoose = require("mongoose");
+    const Intern = require("../models/Intern");
+    const InactiveIntern = require("../models/InactiveIntern");
+    let intern = null;
+
+    if (targetId && mongoose.Types.ObjectId.isValid(targetId)) {
+      intern = await Intern.findByIdAndUpdate(
+        targetId,
+        { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+        { new: true }
+      );
+
+      if (!intern) {
+        intern = await InactiveIntern.findByIdAndUpdate(
+          targetId,
+          { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+          { new: true }
+        );
+      }
+    }
+
+    if (!intern && targetId) {
+      const query = {
+        $or: [
+          { Trainee_ID: targetId },
+          { Trainee_Email: new RegExp(`^${targetId}$`, "i") },
+          ...(req.user?.email ? [{ Trainee_Email: new RegExp(`^${req.user.email}$`, "i") }] : []),
+        ],
+      };
+      intern = await Intern.findOneAndUpdate(
+        query,
+        { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+        { new: true }
+      );
+
+      if (!intern) {
+        intern = await InactiveIntern.findOneAndUpdate(
+          query,
+          { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+          { new: true }
+        );
+      }
+    }
+
+    if (!intern && req.user?.email) {
+      const emailQuery = { Trainee_Email: new RegExp(`^${req.user.email}$`, "i") };
+      intern = await Intern.findOneAndUpdate(
+        emailQuery,
+        { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+        { new: true }
+      );
+      if (!intern) {
+        intern = await InactiveIntern.findOneAndUpdate(
+          emailQuery,
+          { hasCompletedTour: hasCompletedTour !== undefined ? hasCompletedTour : true },
+          { new: true }
+        );
+      }
+    }
 
     if (!intern) {
       return res.status(404).json({ message: 'Intern profile not found' });

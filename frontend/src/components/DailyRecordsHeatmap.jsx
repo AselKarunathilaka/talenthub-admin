@@ -98,6 +98,8 @@ const DailyRecordsHeatmap = ({ startDate, endDate, records: propRecords }) => {
   const [hovered, setHovered] = useState(null);
   const scrollRef = useRef(null);
 
+  const [holidays, setHolidays] = useState(new Set());
+
   // Resolve the range to render: the intern's actual training period when
   // it's available, otherwise fall back to a trailing window so the widget
   // still renders something useful before Training_StartDate has loaded.
@@ -122,6 +124,46 @@ const DailyRecordsHeatmap = ({ startDate, endDate, records: propRecords }) => {
     fallbackStart.setDate(fallbackStart.getDate() - (FALLBACK_WEEKS * 7 - 1));
     return { rangeStart: fallbackStart, rangeEnd: today, usingFallback: true };
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchHolidays = async () => {
+      try {
+        const { API_BASE_URL } = await import("../api/apiConfig");
+        const startYear = rangeStart.getFullYear();
+        const endYear = rangeEnd.getFullYear();
+        const yearsToFetch = [];
+        for (let y = startYear; y <= endYear; y++) yearsToFetch.push(y);
+
+        const holidayDates = new Set();
+        await Promise.all(
+          yearsToFetch.map(async (year) => {
+            try {
+              const res = await fetch(`${API_BASE_URL}/holidays/${year}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.holidays && Array.isArray(data.holidays)) {
+                  data.holidays.forEach((h) => {
+                    if (h.date) holidayDates.add(h.date.split("T")[0]);
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch holidays for ${year}`, err);
+            }
+          })
+        );
+        if (!cancelled) setHolidays(holidayDates);
+      } catch (err) {
+        console.error("Failed to setup holiday fetch", err);
+      }
+    };
+    fetchHolidays();
+    return () => {
+      cancelled = true;
+    };
+  }, [rangeStart, rangeEnd]);
 
   useEffect(() => {
     if (propRecords !== undefined) {
@@ -247,27 +289,48 @@ const DailyRecordsHeatmap = ({ startDate, endDate, records: propRecords }) => {
       .filter((d) => !d.isFuture && !d.isOutOfRange);
     sortedKeys.forEach((day) => {
       const score = scoreEntry(day.record);
+      const dow = day.date.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isHoliday = holidays.has(day.key);
+
       if (score === -1) {
         leaveDays += 1;
-        running = 0; // leave breaks an activity streak
+        if (!isWeekend && !isHoliday) {
+          running = 0; // leave on a workday breaks an activity streak
+        }
       } else if (score > 0) {
         submitted += 1;
-        running += 1;
-        longestStreak = Math.max(longestStreak, running);
+        if (!isWeekend && !isHoliday) {
+          running += 1;
+          longestStreak = Math.max(longestStreak, running);
+        }
       } else {
-        running = 0;
+        if (!isWeekend && !isHoliday) {
+          running = 0; // no submission on a workday breaks the streak
+        }
       }
     });
 
     // current streak = consecutive submitted days counting back from today
     for (let i = sortedKeys.length - 1; i >= 0; i--) {
-      const score = scoreEntry(sortedKeys[i].record);
-      if (score > 0) currentStreak += 1;
-      else break;
+      const day = sortedKeys[i];
+      const score = scoreEntry(day.record);
+      const dow = day.date.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isHoliday = holidays.has(day.key);
+
+      if (isWeekend || isHoliday) {
+        // skip weekends and holidays entirely, regardless of submissions
+        continue;
+      } else if (score > 0) {
+        currentStreak += 1;
+      } else {
+        break; // break on the first workday without a submission
+      }
     }
 
     return { submitted, leaveDays, currentStreak, longestStreak };
-  }, [weeks]);
+  }, [weeks, holidays]);
 
   const formatTooltipDate = (date) =>
     date.toLocaleDateString("en-US", {

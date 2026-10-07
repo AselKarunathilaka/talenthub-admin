@@ -310,11 +310,14 @@ const AdminManualAttendance = () => {
         const page = await pdf.getPage(pageNo);
         const textContent = await page.getTextContent();
         textContent.items.forEach((item) => {
-          const value = item.str.trim();
-          if (/^\d{4}$/.test(value)) {
-            const id = Number(value);
-            if (id >= 3000 && id <= 9999) ids.push(value);
-          }
+          const words = item.str.split(/[\s,]+/);
+          words.forEach((word) => {
+            const value = word.replace(/[^0-9]/g, "");
+            if (/^\d{4}$/.test(value)) {
+              const id = Number(value);
+              if (id >= 3000 && id <= 9999) ids.push(value);
+            }
+          });
         });
       }
 
