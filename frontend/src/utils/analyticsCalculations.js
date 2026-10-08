@@ -143,7 +143,21 @@ export function calcElapsedWeeks(startDate, endDate = new Date()) {
   if (endMon < startMon) return 0;
 
   const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  return Math.max(0, diffWeeks);
+  // The week the intern joined is NOT counted (they may have joined after that week's meeting),
+  // so counting starts from the following week.
+  return Math.max(0, diffWeeks - 1);
+}
+
+/**
+ * Monday key ("YYYY-MM-DD") of the first week whose meeting is counted:
+ * the week AFTER the week the intern joined.
+ */
+export function getFirstCountedMeetingWeekKey(startDate) {
+  const joinMonKey = getMondayWeekKey(startDate);
+  if (!joinMonKey) return null;
+  const d = new Date(joinMonKey + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d.toISOString().slice(0, 10);
 }
 
 /**

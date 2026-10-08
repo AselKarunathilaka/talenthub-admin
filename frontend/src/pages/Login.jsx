@@ -104,6 +104,9 @@ const Login = () => {
       if (data.token) {
         localStorage.setItem("internId", data.internId);
         localStorage.setItem("authToken", data.token);
+        if (data.hasCompletedTour) {
+          localStorage.setItem(`talenthub_tour_completed_${data.internId}`, "true");
+        }
         navigate("/dashboard");
       } else {
         setError(data.message || "Authentication failed. Please try again.");

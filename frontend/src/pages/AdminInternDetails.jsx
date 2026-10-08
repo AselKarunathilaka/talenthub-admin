@@ -59,6 +59,7 @@ import {
   calcElapsedWeeks as calcElapsedWeeksUtil,
   calcDailyAttendanceRate,
   calcMeetingAttendanceRate,
+  getFirstCountedMeetingWeekKey,
   calcLogbookRate,
   calcPerformanceRate,
   getPerformanceStatus,
@@ -748,7 +749,7 @@ const AdminInternDetails = () => {
 
   const attendedMeetingWeeksCount = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
-    const startMonKey = getMondayWeekKey(startDateVal);
+    const startMonKey = getFirstCountedMeetingWeekKey(startDateVal);
     const todayMonKey = getMondayWeekKey(new Date());
 
     return new Set(
@@ -3209,7 +3210,7 @@ const AdminInternDetails = () => {
                   const startDateVal = intern?.startDate || intern?.Training_StartDate;
                   const startDStr = toDateStr(startDateVal);
                   const todayDStr = toDateStr(new Date());
-                  const startMonKey = getMondayWeekKey(startDateVal);
+                  const startMonKey = getFirstCountedMeetingWeekKey(startDateVal);
                   const todayMonKey = getMondayWeekKey(new Date());
 
                   // Working-day daily attendance count (unique dates, present only, strictly start date -> today)

@@ -416,8 +416,8 @@ exports.extractIdsFromImages = async (req, res) => {
       requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
     }
     
-    // Use gemini-3.5-flash-lite for image-based attendance extraction
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+    // Use gemini-1.5-flash for image-based attendance extraction
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const model = genAI.getGenerativeModel({ model: geminiModel }, requestOptions);
 
     const prompt = `Please extract all 4-digit numeric Intern IDs from this attendance sheet. Look for numbers between 3000 and 9999. Return ONLY a comma-separated list of the extracted numbers. Do not include any other text or explanation. Ignore dates, times, page numbers, or other non-ID text.`;

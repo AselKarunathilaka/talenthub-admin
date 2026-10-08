@@ -504,10 +504,29 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
     if (effectiveStartStr > effectiveEndStr) return null;
 
     const workingDays = calcWorkingDays(effectiveStart, effectiveEnd, holidays);
-    const expectedMeetings = calcElapsedWeeks(effectiveStart, effectiveEnd);
-
-    const startMondayKey = getMondayWeekKey(effectiveStart);
+    // The week the intern joined is not counted: meetings are counted from the following week.
+    // (With a date filter, counting starts at whichever is later: the filter start week or that week.)
+    const joinMondayKey = getMondayWeekKey(internStartDate);
+    let firstCountedMondayKey = null;
+    if (joinMondayKey) {
+      const fc = new Date(joinMondayKey + "T12:00:00Z");
+      fc.setUTCDate(fc.getUTCDate() + 7);
+      firstCountedMondayKey = fc.toISOString().slice(0, 10);
+    }
+    const effectiveStartMondayKey = getMondayWeekKey(effectiveStart);
+    const startMondayKey =
+      firstCountedMondayKey && effectiveStartMondayKey
+        ? (firstCountedMondayKey > effectiveStartMondayKey ? firstCountedMondayKey : effectiveStartMondayKey)
+        : (effectiveStartMondayKey || firstCountedMondayKey);
     const endMondayKey = getMondayWeekKey(effectiveEnd);
+
+    let expectedMeetings = 0;
+    if (startMondayKey && endMondayKey && endMondayKey > startMondayKey) {
+      expectedMeetings = Math.round(
+        (new Date(endMondayKey + "T12:00:00Z").getTime() - new Date(startMondayKey + "T12:00:00Z").getTime()) /
+          (7 * 24 * 60 * 60 * 1000),
+      );
+    }
 
     // ── Attended counts matching AdminInternDetails.jsx exactly ──
     // KEY PRINCIPLE (from adminInternDetailsController.js):

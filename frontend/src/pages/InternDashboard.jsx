@@ -51,6 +51,7 @@ import {
   calcElapsedWeeks as calcElapsedWeeksUtil,
   calcDailyAttendanceRate,
   calcMeetingAttendanceRate,
+  getFirstCountedMeetingWeekKey,
   calcLogbookRate,
   calcPerformanceRate,
   getPerformanceStatus,
@@ -565,6 +566,15 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
       return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
     };
 
+    // The week the intern joined is not counted (same key format as below)
+    const joinDate = new Date(internData.Training_StartDate);
+    const joinWeekKey = (() => {
+      if (isNaN(joinDate.getTime())) return null;
+      const jd = joinDate.getDay();
+      const jmon = new Date(new Date(joinDate).setDate(joinDate.getDate() - jd + (jd === 0 ? -6 : 1)));
+      return `${jmon.getFullYear()}-${jmon.getMonth()}-${jmon.getDate()}`;
+    })();
+
     const weeksPresent = new Set(
       meetingAttendance
         .filter((e) => e.status === "Present" && e.date)
@@ -576,7 +586,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           const monday = new Date(new Date(d).setDate(diff));
           return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
         })
-        .filter(Boolean),
+        .filter((k) => k && k !== joinWeekKey),
     ).size;
 
     const start = new Date(internData.Training_StartDate);
@@ -586,10 +596,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
     const now = new Date();
     const measureTo = now;
     if (isNaN(start) || measureTo <= start) return 0;
-    const weeksHeld = Math.max(
-      1,
-      Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)),
-    );
+    // Skip the join week: counting starts from the following week
+    const weeksHeld =
+      Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)) - 1;
+    if (weeksHeld <= 0) return 100;
     return Math.min(100, Math.round((weeksPresent / weeksHeld) * 100));
   })();
 
@@ -801,9 +811,9 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
     return calcDailyAttendanceRate(attendedDaysCount, workingDays);
   }, [internData, attendedDaysCount, workingDays]);
 
-  const attendedMeetingWeeksCount = useMemo(() => {
+  const attendedMeetingWeekSet = useMemo(() => {
     const startDateVal = internData?.Training_StartDate || internData?.startDate;
-    const startMonKey = getMondayWeekKey(startDateVal);
+    const startMonKey = getFirstCountedMeetingWeekKey(startDateVal);
     const todayMonKey = getMondayWeekKey(new Date());
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
     const isWorkingDay = (dateVal) => {
@@ -828,14 +838,68 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
         })
         .map((r) => getMondayWeekKey(r.date))
         .filter(Boolean)
-    ).size;
+    );
   }, [internData, meetingAttendance, holidays]);
+
+  const attendedMeetingWeeksCount = attendedMeetingWeekSet.size;
 
   const meetingAttendanceRate = useMemo(() => {
     const startDateVal = internData?.Training_StartDate || internData?.startDate;
     if (!startDateVal) return 0;
     return calcMeetingAttendanceRate(attendedMeetingWeeksCount, elapsedWeeks);
   }, [internData, attendedMeetingWeeksCount, elapsedWeeks]);
+
+  // Weeks (Mon-Sun) that are already over and have no attended meeting.
+  // These have no DB document, so they are generated here and shown as "Absent".
+  // Uses the same week range as `elapsedWeeks`, so the count always matches the Absent card.
+  const missedMeetingWeekRows = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    const startMonKey = getFirstCountedMeetingWeekKey(startDateVal);
+    if (!startMonKey || !elapsedWeeks) return [];
+    const startMon = new Date(startMonKey + "T12:00:00Z");
+    const rows = [];
+    for (let k = 0; k < elapsedWeeks; k++) {
+      const weekStart = new Date(startMon.getTime() + k * 7 * 24 * 60 * 60 * 1000);
+      const weekKey = weekStart.toISOString().slice(0, 10);
+      if (attendedMeetingWeekSet.has(weekKey)) continue;
+      rows.push({
+        date: weekStart,
+        status: "Absent",
+        meetingName: "General Meeting",
+        attendanceMethod: "none",
+        isMissedWeek: true,
+      });
+    }
+    return rows;
+  }, [internData, elapsedWeeks, attendedMeetingWeekSet]);
+
+  const displayedMeetingRows = useMemo(() => {
+    const base = filteredMeetingAttendance || [];
+    // When filtering by a specific date, show only the real records of that day
+    if (selectedDate) return base;
+    return [...base, ...missedMeetingWeekRows].sort(
+      (a, b) => new Date(b.date) - new Date(a.date),
+    );
+  }, [filteredMeetingAttendance, missedMeetingWeekRows, selectedDate]);
+
+  // Meeting table: header sits OUTSIDE the scroll box, so the scrollbar starts below it.
+  // The header gets the same right padding as the scrollbar width to keep the columns aligned.
+  const meetingTableScrollRef = useRef(null);
+  const meetingTableHeaderRef = useRef(null);
+  useEffect(() => {
+    const box = meetingTableScrollRef.current;
+    const head = meetingTableHeaderRef.current;
+    if (!box || !head) return undefined;
+    const apply = () => {
+      head.style.paddingRight = `${Math.max(0, box.offsetWidth - box.clientWidth)}px`;
+    };
+    apply();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(apply);
+    ro.observe(box);
+    if (box.firstElementChild) ro.observe(box.firstElementChild);
+    return () => ro.disconnect();
+  }, [activeTab, displayedMeetingRows.length]);
 
   const validLogbookCount = useMemo(() => {
     const startDateVal = internData?.Training_StartDate || internData?.startDate;
@@ -1815,21 +1879,29 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                         </div>
                       </div>
                     </div>
-                    {filteredMeetingAttendance && filteredMeetingAttendance.length > 0 ? (
+                    {displayedMeetingRows && displayedMeetingRows.length > 0 ? (
                       <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
-                          <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
-                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                              <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
-                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
-                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">Meeting Name</th>
-                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Time</th>
-                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
-                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                              {filteredMeetingAttendance.map((entry, idx) => {
+                        <div className="overflow-x-auto no-scrollbar touch-pan-x overscroll-x-contain">
+                          <div className="min-w-[440px] sm:min-w-0">
+                            <div ref={meetingTableHeaderRef} className="bg-slate-50 border-b border-slate-200">
+                              <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+                                <colgroup><col style={{ width: "24%" }} /><col style={{ width: "26%" }} /><col style={{ width: "16%" }} /><col style={{ width: "18%" }} /><col style={{ width: "16%" }} /></colgroup>
+                                <thead>
+                                  <tr className="text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
+                                    <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
+                                    <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">Meeting Name</th>
+                                    <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Time</th>
+                                    <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
+                                    <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
+                                  </tr>
+                                </thead>
+                              </table>
+                            </div>
+                            <div ref={meetingTableScrollRef} className="overflow-y-auto overflow-x-hidden overscroll-y-auto visible-scrollbar max-h-[212px] sm:max-h-[276px]">
+                              <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+                                <colgroup><col style={{ width: "24%" }} /><col style={{ width: "26%" }} /><col style={{ width: "16%" }} /><col style={{ width: "18%" }} /><col style={{ width: "16%" }} /></colgroup>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                              {displayedMeetingRows.map((entry, idx) => {
                                 const d = new Date(entry.date);
                                 const isPresent = entry.status === "Present";
                                 const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
@@ -1839,7 +1911,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                                     <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
                                       <div className="flex items-center justify-center">
                                         <span className="font-semibold text-slate-800 text-[10px] sm:text-xs">
-                                          {`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`}
+                                          {entry.isMissedWeek ? "Week of " : ""}{`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`}
                                         </span>
                                       </div>
                                     </td>
@@ -1849,13 +1921,13 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                                     <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
                                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
                                         <Clock size={11} className="text-slate-400 shrink-0 hidden sm:block" />
-                                        {entry.checkInTime || entry.time || "N/A"}
+                                        {entry.isMissedWeek ? "-" : (entry.checkInTime || entry.time || "N/A")}
                                       </div>
                                     </td>
                                     <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
                                       <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
-                                        <MethodIcon size={12} className="shrink-0" />
-                                        <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
+                                        {entry.isMissedWeek ? <span>-</span> : (<><MethodIcon size={12} className="shrink-0" />
+                                        <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span></>)}
                                       </span>
                                     </td>
                                     <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
@@ -1870,6 +1942,8 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                           </table>
                         </div>
                       </div>
+                    </div>
+                  </div>
                     ) : (
                       <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No meeting attendance records found</div>
                     )}

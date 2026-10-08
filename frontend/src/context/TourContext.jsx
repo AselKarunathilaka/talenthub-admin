@@ -3,8 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { getAuthToken } from '../utils/api';
+import { api, getAuthToken } from '../utils/api';
 import { TOUR_STEPS } from '../config/tourSteps';
 import { GuidedTour } from '../components/GuidedTour';
 
@@ -37,11 +36,13 @@ export const TourProvider = ({ children }) => {
     });
   };
 
-  // Re-sync internId if the user logs in after the provider mounts
+  // Re-sync internId if the user logs in after the provider mounts or navigation occurs
   useEffect(() => {
     const id = localStorage.getItem('internId');
-    if (id && id !== internId) setInternId(id);
-  });
+    if (id && id !== internId) {
+      setInternId(id);
+    }
+  }, [location.pathname, internId]);
 
   // On internId load, check permanent status (localStorage + DB) AND session status (sessionStorage)
   useEffect(() => {
@@ -62,17 +63,19 @@ export const TourProvider = ({ children }) => {
       return;
     }
 
-    // Fast path: localStorage already says completed — hide immediately
+    // Fast path: localStorage already says completed on this device — hide immediately
     if (localCompleted === 'true') {
       setIsTourCompleted(true);
       setHasPausedTour(false);
       setIsDismissedForSession(sessionDismissed === 'true');
+      // Background sync: Ensure server DB also reflects completion (e.g. if completed prior to fix)
+      api.put('/interns/tour-status', { hasCompletedTour: true, internId }).catch(() => {});
       return;
     }
 
-    // Otherwise verify against the DB
-    axios.get(`/api/interns/${internId}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
-      .then(({ data }) => {
+    // Otherwise verify against the DB to ensure account-wide persistence across all devices
+    api.get(`/interns/${internId}`)
+      .then((data) => {
         const completed = data?.hasCompletedTour === true;
         setIsTourCompleted(completed);
         if (completed) {
@@ -81,8 +84,8 @@ export const TourProvider = ({ children }) => {
           setHasPausedTour(false);
         }
       })
-      .catch(() => {
-        // On error keep sticky note visible so the user can still start the tour
+      .catch((err) => {
+        console.warn('Could not fetch tour status from server:', err);
       });
 
     // A paused tour is intentionally persistent until completion or "Don't Show Again".
@@ -132,7 +135,7 @@ export const TourProvider = ({ children }) => {
       localStorage.removeItem(`talenthub_tour_paused_${internId}`);
       setHasPausedTour(false);
       try {
-        await axios.put('/api/interns/tour-status', { hasCompletedTour: true }, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        await api.put('/interns/tour-status', { hasCompletedTour: true, internId });
       } catch (err) {
         console.warn('Could not persist tour status to server:', err);
       }
@@ -180,12 +183,17 @@ export const TourProvider = ({ children }) => {
   };
 
   // Global console testing helper to reset both permanent and session states
-  window.resetTalentHubTour = () => {
+  window.resetTalentHubTour = async () => {
     const id = internId || localStorage.getItem('internId');
     if (id) {
       localStorage.removeItem(`talenthub_tour_completed_${id}`);
       localStorage.removeItem(`talenthub_tour_paused_${id}`);
       sessionStorage.removeItem(`talenthub_tour_session_dismissed_${id}`);
+      try {
+        await api.put('/interns/tour-status', { hasCompletedTour: false, internId: id });
+      } catch (err) {
+        console.warn('Could not reset tour status on server:', err);
+      }
     }
     setIsTourCompleted(false);
     setHasPausedTour(false);

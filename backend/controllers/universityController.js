@@ -169,7 +169,8 @@ const calcElapsedWeeks = (startDate, endDate = new Date()) => {
   if (endMon < startMon) return 0;
 
   const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  return Math.max(0, diffWeeks);
+  // The week the intern joined is not counted; counting starts from the following week
+  return Math.max(0, diffWeeks - 1);
 };
 
 // Canonical attendance calculation helper matching AdminAnalytics exactly
@@ -245,7 +246,7 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
         const dVal = m.attendanceTime || r.date;
         if (dVal) {
           const wk = getMondayWeekKey(dVal);
-          if (wk && (!startMondayKey || wk >= startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
+          if (wk && (!startMondayKey || wk > startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
             attendedMeetingWeeks.add(wk);
           }
         }
@@ -262,7 +263,7 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
     const isPresent = s === "present" || s === "late" || !entry.status;
     if (isMeeting && isPresent && entry.date) {
       const wk = getMondayWeekKey(entry.date);
-      if (wk && (!startMondayKey || wk >= startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
+      if (wk && (!startMondayKey || wk > startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
         attendedMeetingWeeks.add(wk);
       }
     }

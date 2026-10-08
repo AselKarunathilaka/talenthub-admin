@@ -201,7 +201,9 @@ function buildMetrics(intern, drMap, attMap) {
 
   const endDate = intern.Training_EndDate ? Math.min(new Date(), new Date(intern.Training_EndDate)) : new Date();
   const weekdays = calcWorkingDays(intern.Training_StartDate, endDate);
-  const weeks    = calcElapsedWeeks(intern.Training_StartDate, endDate);
+  // The week the intern joined is not counted; counting starts from the following week
+  const weeks    = Math.max(0, calcElapsedWeeks(intern.Training_StartDate, endDate) - 1);
+  const joinWk   = weekKey(intern.Training_StartDate);
 
   // Union daily dates (DailyRecord primary + intern.attendance supplement)
   const dailyDateSet = new Set(dr.dailyDates);
@@ -220,7 +222,7 @@ function buildMetrics(intern, drMap, attMap) {
   const meetingWeeks = new Set();
   for (const d of meetingDateSet) {
     const wk = weekKey(d);
-    if (wk && (!currentWk || wk < currentWk)) meetingWeeks.add(wk);
+    if (wk && wk !== joinWk && (!currentWk || wk < currentWk)) meetingWeeks.add(wk);
   }
   const meetingAttendanceRate = weeks <= 0 ? 100 : Math.min(100, Math.round((meetingWeeks.size / weeks) * 100)) || 0;
 
